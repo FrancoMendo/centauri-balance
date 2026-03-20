@@ -1,0 +1,122 @@
+Lineamientos escenciales
+- Aplicacion de escritorio multiplataforma (Windows/macOS/Linux)
+- Usar siempre buenas practicas
+- Proveer de atajos desde el teclado, el usuario debe poder manejar la aplicacion sin usar el mouse
+
+Funcionalidades:
+- 100% offline
+- Capacidad de sincronizar datos con un servidor cuando hay conexion a internet
+- Capadidad de leer inputs por dispositivos externos como maquina lectora de códigos de barras
+- Servidor para sincronizacion de datos
+- API para comunicacion entre la aplicacion y el servidor
+
+
+Infraestructura:
+- Base de datos local (los productos tienen que estar respaldados, para ante cualquier error nunca perder los datos)
+- Tablas:
+    - usuarios (id_usuario, nombre, password, rol)
+    - productos (id_producto, nombre, categoria, precio, stock, codigo de barras, descripcion, id_proveedor)
+    - proveedores (id_proveedor, nombre, telefono, direccion, email)
+    - ventas (id_venta, id_producto, cantidad, precio, fecha, id_usuario)
+    - egresos (id_egreso, descripcion, monto, fecha, id_usuario)
+    - logs (id_log, descripcion, fecha, id_usuario)
+
+
+Packages
+Frontend (Node.js / npm)
+Estos son los que instalarás en la raíz de tu proyecto para manejar la interfaz y la lógica de negocio.
+@tauri-apps/api: Imprescindible. Es el puente para que tu React hable con el sistema operativo (ventanas, archivos, hardware).
+@tauri-apps/plugin-sql: El plugin oficial de Tauri v2 para manejar SQLite de forma nativa y segura.
+drizzle-orm: Para manejar la base de datos con TypeScript de forma fluida.
+drizzle-kit: (Dev dependency) Para generar las migraciones (archivos .sql) automáticamente cuando cambies tus tablas.
+zustand: Mucho más liviano y simple que Redux para manejar el estado global (el carrito de compras actual, el usuario logueado).
+shadcn/ui + tailwind-merge: Para la interfaz. Te da componentes profesionales (tablas, diálogos, inputs) que transmiten ese "orden" que buscás.
+lucide-react: El paquete de iconos estándar, limpio y consistente.
+zod: Para validar los datos que entran (ej. que un precio no sea negativo) antes de guardarlos en la DB.
+
+Bash
+# Comando de instalación rápida
+npm install @tauri-apps/api @tauri-apps/plugin-sql drizzle-orm zustand lucide-react zod
+npm install -D drizzle-kit tailwindcss postcss autoprefixer
+
+2. Backend (Rust / Cargo)
+Estos van dentro de src-tauri/Cargo.toml. Tauri v2 maneja casi todo por plugins, pero necesitás estos para el hardware:
+tauri-plugin-sql: El lado de Rust del plugin de base de datos.
+escposify o escpos: Crates de Rust para convertir texto y logos al lenguaje de las impresoras térmicas (comandos hexadecimales).
+serde y serde_json: Para convertir los datos que viajan entre Rust y TypeScript de forma segura.
+chrono: Para un manejo preciso de fechas y horas en los cierres de caja (evita líos de zonas horarias).
+
+
+- Pasos
+1. estructura de carpetas
+centauri-balance/
+├── src/                # Frontend (React + TS)
+│   ├── assets/         # Imágenes, logos, sonidos de escaneo
+│   ├── components/     # UI genérica (Buttons, Inputs, Modals)
+│   ├── features/       # Lógica por dominio (Lo más importante)
+│   │   ├── sales/      # Punto de venta, carrito, pagos
+│   │   ├── inventory/  # Gestión de stock, precios, QR
+│   │   ├── auth/       # Login, roles de usuario
+│   │   └── reports/    # Cierre de caja, historial
+│   ├── hooks/          # useScanner.ts, usePrinter.ts, useDatabase.ts
+│   ├── lib/            # Configuración de Drizzle, clientes
+│   ├── services/       # Llamadas a Tauri (invokes)
+│   ├── store/          # Estado global (Zustand o Context)
+│   └── types/          # Interfaces compartidas
+├── src-tauri/          # Backend (Rust)
+│   ├── capabilities/   # Permisos de Tauri v2 (impresión, fs, etc.)
+│   ├── migrations/     # Archivos .sql de Drizzle
+│   ├── src/
+│   │   ├── commands/   # Funciones de Rust (printer.rs, db.rs, auth.rs)
+│   │   ├── main.rs     # Punto de entrada y registro de comandos
+│   │   └── setup.rs    # Inicialización de la DB y carpetas
+│   └── tauri.conf.json # Configuración nativa
+└── drizzle.config.ts   # Configuración de migraciones
+
+2. Instalar Packages
+3. Generar base de datos Inicial
+4. Crear las primeras pages (Frontend)
+
+
+-Primera versión
+App 100% offline con base de datos local, con la capacidad de leer inputs por dispositivos externos como maquina lectora de códigos de barras
+Registrar ventas, egresos y ABM de productos
+Generar resumen de "Cierre de caja" del dia
+
+-Segunda versión
+App con sincronizacion de datos con un servidor
+
+
+-----------------------------------------------------------
+SEGUIMIENTO Y PLAN DE EJECUCIÓN (Hacia la v1.0)
+-----------------------------------------------------------
+
+FASE 1: Configuración Inicial y Base de Datos (COMPLETADA)
+[x] 1. Crear estructura de carpetas (features, store, lib, etc.)
+[x] 2. Instalar paquetes (Zustand, Drizzle, Tauri, Tailwind v4)
+[x] 3. Desarrollar el esquema de BD (`src/lib/schema.ts`) con Drizzle ORM
+[x] 4. Crear archivos de migración vía local Drizzle-Kit (`centauri.db`)
+[x] 5. Crear el driver proxy y mock local (`DatabaseClient`)
+
+FASE 2: Módulo de Inventario (ABM de Productos) (EN PROGRESO)
+[x] 1. Crear el store global con Zustand (`useInventoryStore`)
+[x] 2. Generar UI de la lista del Inventario
+[x] 3. Generar Modal de Carga de Producto con atajos de teclado completos (Tab, Shift+Tab, Alt+N, Enter, Esc)
+[x] 4. Componente de input robusto para precios (`PriceInput.tsx`)
+[x] 5. Conectar el modal para insertar productos usando Drizzle (ya está el "tubo", falta probar guardado con Rust o seguir mockeando la lógica)
+[ ] 6. Añadir acciones para Editar producto y Eliminar producto (UI + Lógica).
+
+FASE 3: Punto de Venta (Registro de Ventas)
+[ ] 1. Crear pantalla principal de Ventas (El POS)
+[ ] 2. Añadir input de búsqueda ágil optimizado para Lector de Códigos de Barras (autofocus, enter automático).
+[ ] 3. Lógica del "Carrito" temporal (sumar artículos, modificar cantidad).
+[ ] 4. Cobrar y descontar el stock automáticamente de la tabla `productos`.
+
+FASE 4: Egresos y Cierre de Caja
+[ ] 1. Pantalla/Modal para registro de "Egresos" de dinero.
+[ ] 2. Pantalla de Reportes: Un botón que lea todo lo vendido y gastado "hoy", y sume el total en caja.
+
+FASE 5: Compilación y Producción
+[ ] 1. Instalar Toolchain de Rust localmente (`cargo`) para habilitar el backend de escritorio real.
+[ ] 2. Añadir `tauri-plugin-sql` a las dependencias de Rust (`Cargo.toml`).
+[ ] 3. Compilar instalador ejecutable (`.exe`) de prueba.

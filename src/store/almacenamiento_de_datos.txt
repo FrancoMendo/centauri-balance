@@ -1,0 +1,32 @@
+# Explicación del Almacenamiento de Datos (Tauri + SQLite)
+
+Esta app está diseñada para funcionar de manera 100% offline utilizando Tauri v2 y el plugin oficial de SQLite (`@tauri-apps/plugin-sql`). Aquí te explico cómo se almacenan y persisten los datos dependiendo del entorno en el que corres la aplicación:
+
+-----------------------------------------------------------
+
+1. Entorno de Desarrollo (Localhost / `npm run tauri dev`)
+Cuando corres la aplicación en modo desarrollo para programar en tiempo real:
+
+- Base de Datos Física: El plugin de SQLite creará el archivo de base de datos inicial (por ejemplo, `sqlite:datos.db`) generalmente dentro de carpetas temporales orientadas al Debug o junto al backend en tu entorno local dependiendo de la configuración (por ejemplo temporalmente en el AppData del usuario bajo un identificador de debug).
+- Estado de Zustand (RAM): En este periodo de desarrollo y recargas locas, Zustand guarda todo en la memoria en vivo (RAM). Por lo que si no guardamos explicitamente un dato en Tauri SQL, cuando toques "Refrescar ventana (F5)", Zustand vuelve a 0 (pierde el estado) hasta que ejecuta de nuevo un comando como el `fetchProducts` que va y vuelve a buscar los datos físicos guardados por Rust en ese .db.
+
+-----------------------------------------------------------
+
+2. Entorno de Producción (Al hacer el build / `npm run tauri build`)
+Cuando armas el instalador final (.exe, .deb, .app) y el cliente lo instala en su computadora comercial.
+
+- Base de Datos Física Real: Los sistemas operativos (Windows, macOS) no dejan que una aplicación guarde datos donde quiera por seguridad. Tauri resuelve esto ubicando inteligentemente tu base de datos SQLite persistente dentro de la "Carpeta de Datos de Aplicación" oficial de ese Sistema Operativo:
+  * Windows: `C:\Users\Usuario\AppData\Roaming\com.centauri.app\datos.db`
+  * macOS: `/Users/Usuario/Library/Application Support/com.centauri.app/datos.db`
+  * Linux: `~/.local/share/com.centauri.app/datos.db`
+
+Ese archivo de base de datos queda resguardado de forma permanente ahí, logrando tu objetivo de que "los productos tienen que estar respaldados ante cualquier error". Aunque apaguen la computadora bruscamente, el archivo persiste y no depende nunca de internet.
+
+-----------------------------------------------------------
+
+3. Cómo trabajan juntos Zustand y Drizzle:
+El flujo de tu Store (`useInventoryStore.ts`) trabajaría así:
+1. (FRONTEND) Un usuario hace click en "Guardar Nuevo Producto".
+2. (ZUSTAND) Zustand hace un "optimistic update", agregándolo a la memoria para que el usuario sienta que se cargó al instante en la pantalla, y le pasa la orden a Drizzle.
+3. (DRIZZLE) Drizzle toma el objeto TS y dice: "Insert into productos...". Pasa esa consulta encriptada al Core de Rust.
+4. (RUST / Tauri SQL) Rust ejecuta ese SQL sobre el disco rígido local, guardándolo permanentemente en las carpetas de AppData de Windows citadas arriba (100% Offline).
