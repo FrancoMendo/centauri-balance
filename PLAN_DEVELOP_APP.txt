@@ -98,7 +98,7 @@ FASE 1: Configuración Inicial y Base de Datos (COMPLETADA)
 [x] 4. Crear archivos de migración vía local Drizzle-Kit (`centauri.db`)
 [x] 5. Crear el driver proxy y mock local (`DatabaseClient`)
 
-FASE 2: Módulo de Inventario (ABM de Productos) (EN PROGRESO)
+FASE 2: Módulo de Inventario (ABM de Productos) (COMPLETADA)
 [x] 1. Crear el store global con Zustand (`useInventoryStore`)
 [x] 2. Generar UI de la lista del Inventario
 [x] 3. Generar Modal de Carga de Producto con atajos de teclado completos (Tab, Shift+Tab, Alt+N, Enter, Esc)
@@ -106,15 +106,15 @@ FASE 2: Módulo de Inventario (ABM de Productos) (EN PROGRESO)
 [x] 5. Conectar el modal para insertar productos usando Drizzle (ya está el "tubo", falta probar guardado con Rust o seguir mockeando la lógica)
 [x] 6. Añadir acciones para Editar producto y Eliminar producto (UI + Lógica).
 
-FASE 3: Punto de Venta (Registro de Ventas)
-[ ] 1. Crear pantalla principal de Ventas (El POS)
-[ ] 2. Añadir input de búsqueda ágil optimizado para Lector de Códigos de Barras (autofocus, enter automático).
-[ ] 3. Lógica del "Carrito" temporal (sumar artículos, modificar cantidad).
-[ ] 4. Cobrar y descontar el stock automáticamente de la tabla `productos`.
+FASE 3: Punto de Venta (Registro de Ventas) (COMPLETADA)
+[x] 1. Crear pantalla principal de Ventas (El POS)
+[x] 2. Añadir input de búsqueda ágil optimizado para Lector de Códigos de Barras (autofocus, enter automático).
+[x] 3. Lógica del "Carrito" temporal (sumar artículos, modificar cantidad).
+[x] 4. Cobrar y descontar el stock automáticamente de la tabla `productos`.
 
-FASE 4: Egresos y Cierre de Caja
-[ ] 1. Pantalla/Modal para registro de "Egresos" de dinero.
-[ ] 2. Pantalla de Reportes: Un botón que lea todo lo vendido y gastado "hoy", y sume el total en caja.
+FASE 4: Egresos y Cierre de Caja (COMPLETADA)
+[x] 1. Pantalla/Modal para registro de "Egresos" de dinero.
+[x] 2. Pantalla de Reportes: Un botón que lea todo lo vendido y gastado "hoy", y sume el total en caja.
 
 FASE 5: Compilación y Producción
 [ ] 1. Instalar Toolchain de Rust localmente (`cargo`) para habilitar el backend de escritorio real.
