@@ -9,21 +9,24 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
-  const menuItems: { id: PageView; label: string; icon: React.ReactNode }[] = [
+  const menuItems: { id: PageView; label: string; icon: React.ReactNode; shortcut: string }[] = [
     {
       id: "sales",
       label: "Panel de Ventas",
       icon: <ShoppingCart className="w-5 h-5" />,
+      shortcut: "Alt+1",
     },
     {
       id: "inventory",
       label: "Gestión de Inventario",
       icon: <PackageSearch className="w-5 h-5" />,
+      shortcut: "Alt+2",
     },
     {
       id: "cash_register",
       label: "Cierre de Caja",
       icon: <Wallet className="w-5 h-5" />,
+      shortcut: "Alt+3",
     },
   ];
 
@@ -48,10 +51,18 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
                 ? "bg-blue-600/10 text-blue-400 font-semibold" 
                 : "hover:bg-gray-800 hover:text-white"
             )}
-            title={item.label}
+            title={`${item.label} (${item.shortcut})`}
           >
             {item.icon}
-            {item.label}
+            <span className="flex-1 text-left">{item.label}</span>
+            <kbd className={clsx(
+              "text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors",
+              currentPage === item.id
+                ? "border-blue-500/30 text-blue-400/70 bg-blue-500/5"
+                : "border-gray-700 text-gray-600 bg-gray-800/50"
+            )}>
+              {item.shortcut}
+            </kbd>
           </button>
         ))}
       </nav>
@@ -62,3 +73,4 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
     </aside>
   );
 }
+
