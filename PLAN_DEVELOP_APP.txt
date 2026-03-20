@@ -116,7 +116,7 @@ FASE 4: Egresos y Cierre de Caja (COMPLETADA)
 [x] 1. Pantalla/Modal para registro de "Egresos" de dinero.
 [x] 2. Pantalla de Reportes: Un botón que lea todo lo vendido y gastado "hoy", y sume el total en caja.
 
-FASE 5: Compilación y Producción
-[ ] 1. Instalar Toolchain de Rust localmente (`cargo`) para habilitar el backend de escritorio real.
-[ ] 2. Añadir `tauri-plugin-sql` a las dependencias de Rust (`Cargo.toml`).
-[ ] 3. Compilar instalador ejecutable (`.exe`) de prueba.
+FASE 5: Compilación y Producción (COMPLETADA)
+[x] 1. Instalar Toolchain de Rust localmente (`cargo`) para habilitar el backend de escritorio real.
+[x] 2. Añadir `tauri-plugin-sql` a las dependencias de Rust (`Cargo.toml`).
+[x] 3. Compilar instalador ejecutable (`.exe`) de prueba.

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "generate-migration": "drizzle-kit generate",
-    "migrate:localhost": "drizzle-kit migrate --config=drizzle.config.ts"
+    "migrate:localhost": "drizzle-kit migrate --config=drizzle.config.ts",
+    "build:exe": "tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",

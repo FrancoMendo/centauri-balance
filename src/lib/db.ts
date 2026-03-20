@@ -55,8 +55,14 @@ class DatabaseClient {
             let rows: any = [];
 
             if (method === "run") {
-              await tauriDb.execute(query, params);
-              return { rows: [] };
+              try {
+                await tauriDb.execute(query, params);
+                return { rows: [] };
+              } catch (e: any) {
+                const errorStr = e.toString ? e.toString() : JSON.stringify(e);
+                alert(`Error nativo de BD:\n${errorStr}\n\nQuery: ${query}`);
+                throw e;
+              }
             }
 
             if (method === "all" || method === "values" || method === "get") {
