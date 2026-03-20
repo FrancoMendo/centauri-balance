@@ -33,10 +33,23 @@ class DatabaseClient {
         // Crea el Proxy de Drizzle vinculando las consultas
         this.dbInstance = drizzle(
           async (query: string, params: any[], method: "run" | "all" | "values" | "get") => {
-            // Si estmos en navegador, simulamos un retorno vacío para no romper Drizzle
+            // Si estamos en navegador, usamos el Backend local de Vite configurado via Middleware
             if (!isTauri || !tauriDb) {
-              console.log("Mock Query Ejecutada:", query, params);
-              return { rows: [] };
+              try {
+                const res = await fetch('/api/sqlite', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ query, params, method })
+                });
+                if (!res.ok) {
+                  const error = await res.json();
+                  throw new Error(error.error || "Falla al ejecutar SQL en Vite Dev");
+                }
+                return await res.json();
+              } catch (e) {
+                console.error("Error contactando Vite dev server SQLite proxy:", e);
+                return { rows: [] };
+              }
             }
 
             let rows: any = [];
@@ -47,11 +60,11 @@ class DatabaseClient {
             }
 
             if (method === "all" || method === "values" || method === "get") {
-              rows = await tauriDb.select(query, params);
+              const rawRows: any[] = await tauriDb.select(query, params) as any[];
 
-              if (method === "values") {
-                rows = rows.map((row: any) => Object.values(row));
-              }
+              // drizzle-orm/sqlite-proxy espera rows como arrays de valores, no como objetos
+              // tauri-plugin-sql devuelve objetos {col: val}, convertimos a [val, val, ...]
+              rows = rawRows.map((row: any) => Object.values(row));
               return { rows: method === "get" ? rows.slice(0, 1) : rows };
             }
 

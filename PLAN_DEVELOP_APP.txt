@@ -104,7 +104,7 @@ FASE 2: Módulo de Inventario (ABM de Productos) (EN PROGRESO)
 [x] 3. Generar Modal de Carga de Producto con atajos de teclado completos (Tab, Shift+Tab, Alt+N, Enter, Esc)
 [x] 4. Componente de input robusto para precios (`PriceInput.tsx`)
 [x] 5. Conectar el modal para insertar productos usando Drizzle (ya está el "tubo", falta probar guardado con Rust o seguir mockeando la lógica)
-[ ] 6. Añadir acciones para Editar producto y Eliminar producto (UI + Lógica).
+[x] 6. Añadir acciones para Editar producto y Eliminar producto (UI + Lógica).
 
 FASE 3: Punto de Venta (Registro de Ventas)
 [ ] 1. Crear pantalla principal de Ventas (El POS)

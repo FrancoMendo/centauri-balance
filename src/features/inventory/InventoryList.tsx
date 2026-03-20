@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
 import { useInventoryStore } from "../../store/useInventoryStore";
-import { Package, Plus } from "lucide-react";
+import { Package, Plus, Edit2, Trash2 } from "lucide-react";
 import { AddProductModal } from "./AddProductModal";
+import { EditProductModal } from "./EditProductModal";
+import { Producto } from "../../lib/schema";
 
 export function InventoryList() {
-  const { products, isLoading, error, fetchProducts } = useInventoryStore();
+  const { products, isLoading, error, fetchProducts, deleteProduct } = useInventoryStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<Producto | null>(null);
+
+  const handleDelete = async (id: number) => {
+    if (confirm("¿Estás seguro que deseas eliminar este producto?")) {
+      await deleteProduct(id);
+    }
+  };
 
   useEffect(() => {
     fetchProducts();
@@ -59,6 +68,7 @@ export function InventoryList() {
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600">Categoría</th>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600">Precio</th>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600">Stock</th>
+                <th className="py-3 px-4 text-sm font-semibold text-gray-600 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -80,6 +90,22 @@ export function InventoryList() {
                         {p.stock} un.
                       </span>
                     </td>
+                    <td className="py-3 px-4 flex items-center justify-end gap-2">
+                       <button 
+                         onClick={() => setProductToEdit(p)}
+                         title="Editar"
+                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                       >
+                         <Edit2 className="w-4 h-4" />
+                       </button>
+                       <button 
+                         onClick={() => handleDelete(p.id_producto)}
+                         title="Eliminar"
+                         className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                       >
+                         <Trash2 className="w-4 h-4" />
+                       </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -88,7 +114,13 @@ export function InventoryList() {
         </div>
       )}
       
+      
       <AddProductModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <EditProductModal 
+        isOpen={!!productToEdit} 
+        onClose={() => setProductToEdit(null)} 
+        product={productToEdit} 
+      />
     </div>
   );
 }
