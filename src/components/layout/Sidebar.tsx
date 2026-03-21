@@ -1,7 +1,7 @@
-import { ShoppingCart, PackageSearch, Wallet, Orbit } from "lucide-react";
+import { ShoppingCart, PackageSearch, Wallet, Orbit, History, Coins, CreditCard } from "lucide-react";
 import clsx from "clsx";
 
-export type PageView = "sales" | "inventory" | "cash_register";
+export type PageView = "sales" | "sales_history" | "inventory" | "cash_register" | "expense_management" | "payment_methods";
 
 interface SidebarProps {
   currentPage: PageView;
@@ -17,16 +17,34 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
       shortcut: "Alt+1",
     },
     {
+      id: "sales_history",
+      label: "Historial de Ventas",
+      icon: <History className="w-5 h-5" />,
+      shortcut: "Alt+2",
+    },
+    {
       id: "inventory",
       label: "Gestión de Inventario",
       icon: <PackageSearch className="w-5 h-5" />,
-      shortcut: "Alt+2",
+      shortcut: "Alt+3",
     },
     {
       id: "cash_register",
       label: "Cierre de Caja",
       icon: <Wallet className="w-5 h-5" />,
-      shortcut: "Alt+3",
+      shortcut: "Alt+4",
+    },
+    {
+      id: "expense_management",
+      label: "Gestión de Gastos",
+      icon: <Coins className="w-5 h-5" />,
+      shortcut: "Alt+5",
+    },
+    {
+      id: "payment_methods",
+      label: "Métodos de Pago",
+      icon: <CreditCard className="w-5 h-5" />,
+      shortcut: "Alt+6",
     },
   ];
 

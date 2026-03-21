@@ -120,3 +120,8 @@ FASE 5: Compilación y Producción (COMPLETADA)
 [x] 1. Instalar Toolchain de Rust localmente (`cargo`) para habilitar el backend de escritorio real.
 [x] 2. Añadir `tauri-plugin-sql` a las dependencias de Rust (`Cargo.toml`).
 [x] 3. Compilar instalador ejecutable (`.exe`) de prueba.
+
+FASE 6: Historial de Ventas y Gestión de Gastos
+[ ] 1. Base de Datos: Añadir campo "metodo_pago" a `ventas`. Añadir soporte para categoría/proveedor en `egresos` (ej. servicios luz/agua/internet).
+[ ] 2. Página "Historial de Ventas": Lista con todas las ventas, indicando: horario, total, método de pago y opción de ver detalles.
+[ ] 3. Página "Gestión de Gastos": Interfaz para administrar, visualizar y categorizar egresos, proveedores y facturas de servicios.

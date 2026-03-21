@@ -9,10 +9,15 @@ import {
   X,
   Save,
 } from "lucide-react";
+import { Input } from "../components/ui/Input";
+import { Label } from "../components/ui/Label";
+import { Button } from "../components/ui/Button";
 import { useCashRegisterStore } from "../store/useCashRegisterStore";
 
 export function CashRegisterClose() {
   const {
+    dateRange,
+    setDateRange,
     todaySales,
     todayExpenses,
     expenses,
@@ -31,7 +36,7 @@ export function CashRegisterClose() {
   useEffect(() => {
     fetchTodaySummary();
     fetchExpenses();
-  }, [fetchTodaySummary, fetchExpenses]);
+  }, [fetchTodaySummary, fetchExpenses, dateRange]);
 
   // Atajo: Alt+E para abrir el modal de egreso
   useEffect(() => {
@@ -87,14 +92,36 @@ export function CashRegisterClose() {
             Resumen diario y control de ingresos / egresos
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-end gap-4">
+          <div className="flex flex-row items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm text-sm">
+            <div>
+              <span className="text-xs text-gray-400 block px-1">Desde</span>
+              <input 
+                type="datetime-local" 
+                value={dateRange.start}
+                onChange={(e) => setDateRange(e.target.value, dateRange.end)}
+                className="px-2 border-none outline-none font-medium text-gray-700 bg-transparent"
+              />
+            </div>
+            <div className="w-px h-8 bg-gray-200 mx-1"></div>
+            <div>
+              <span className="text-xs text-gray-400 block px-1">Hasta</span>
+              <input 
+                type="datetime-local" 
+                value={dateRange.end}
+                onChange={(e) => setDateRange(dateRange.start, e.target.value)}
+                className="px-2 border-none outline-none font-medium text-gray-700 bg-transparent"
+              />
+            </div>
+          </div>
+          
           <button
             onClick={() => setIsExpenseModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 font-medium rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 text-red-700 font-medium rounded-lg hover:bg-red-100 transition-colors shadow-sm whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
             Registrar Egreso
-            <kbd className="text-[10px] font-mono text-red-400 bg-red-100 px-1.5 py-0.5 rounded border border-red-200 ml-1">
+            <kbd className="hidden sm:inline-block text-[10px] font-mono text-red-400 bg-red-100 px-1.5 py-0.5 rounded border border-red-200 ml-1">
               Alt+E
             </kbd>
           </button>
@@ -109,7 +136,7 @@ export function CashRegisterClose() {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">
-              Ingresos de Hoy
+              Ingresos del Período
             </p>
             <h3 className="text-2xl font-bold text-gray-900">
               ${todaySales.total.toFixed(2)}
@@ -161,21 +188,16 @@ export function CashRegisterClose() {
       {/* Listado de egresos del día */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-800">Egresos de Hoy</h3>
+          <h3 className="font-semibold text-gray-800">Egresos del Período</h3>
           <span className="text-xs text-gray-500 font-mono">
-            {new Date().toLocaleDateString("es-AR", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            Mostrando resultados del rango seleccionado
           </span>
         </div>
 
         {expenses.length === 0 ? (
           <div className="p-10 text-center text-gray-400">
             <Wallet className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-            <p className="font-medium">No hay egresos registrados hoy.</p>
+            <p className="font-medium">No hay egresos registrados en este período.</p>
             <p className="text-sm mt-1">
               Presione{" "}
               <kbd className="px-1.5 py-0.5 bg-gray-100 rounded border text-gray-600 font-mono text-xs">
@@ -253,60 +275,50 @@ export function CashRegisterClose() {
 
             <form onSubmit={handleAddExpense} className="p-6 space-y-4">
               <div>
-                <label
-                  htmlFor="expDesc"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Descripción *
-                </label>
-                <input
+                <Label htmlFor="expDesc">Descripción *</Label>
+                <Input
                   ref={descInputRef}
                   id="expDesc"
                   type="text"
                   required
                   placeholder="Ej. Pago a proveedor, Retiro de efectivo"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all"
+                  className="focus:ring-amber-500"
                   value={expenseDesc}
                   onChange={(e) => setExpenseDesc(e.target.value)}
                 />
               </div>
 
               <div>
-                <label
-                  htmlFor="expAmount"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Monto ($) *
-                </label>
-                <input
+                <Label htmlFor="expAmount">Monto ($) *</Label>
+                <Input
                   id="expAmount"
                   type="number"
                   step="0.01"
                   min="0.01"
                   required
                   placeholder="0.00"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all font-mono"
+                  className="focus:ring-amber-500 font-mono"
                   value={expenseAmount}
                   onChange={(e) => setExpenseAmount(e.target.value)}
                 />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => setIsExpenseModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
                   disabled={isLoading}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 transition-colors disabled:opacity-50"
+                  className="bg-amber-600 hover:bg-amber-700 focus:ring-amber-500 text-white"
                 >
                   <Save className="w-4 h-4" />
                   {isLoading ? "Guardando..." : "Registrar Egreso"}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

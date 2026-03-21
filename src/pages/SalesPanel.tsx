@@ -2,19 +2,54 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { ShoppingCart, Barcode, Banknote, Trash2, Plus, Minus, X } from "lucide-react";
 import { useSalesStore } from "../store/useSalesStore";
 import { useInventoryStore } from "../store/useInventoryStore";
+import { PriceInput } from "../components/PriceInput";
+import { Input } from "../components/ui/Input";
+import { Button } from "../components/ui/Button";
 import { getDb } from "../lib/db";
 import { productos as productosTable } from "../lib/schema";
 import { eq, sql } from "drizzle-orm";
-import { ventas } from "../lib/schema";
+import { ventas, metodos_pago as pmTable } from "../lib/schema";
 
 export function SalesPanel() {
-  const { cart, addToCart, removeFromCart, updateQuantity, clearCart, getTotal, getItemCount, searchQuery, setSearchQuery } = useSalesStore();
+  const { cart, addToCart, removeFromCart, updateQuantity, updatePrice, clearCart, getTotal, getItemCount, searchQuery, setSearchQuery } = useSalesStore();
   const { products, fetchProducts } = useInventoryStore();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchResults, setSearchResults] = useState<typeof products>([]);
   const [showResults, setShowResults] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedResultIndex, setSelectedResultIndex] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState("Efectivo");
+  const [paymentMethodsList, setPaymentMethodsList] = useState<{ nombre: string; comision: number }[]>([]);
+
+  // Inicializar métodos de pago
+  useEffect(() => {
+    async function initPM() {
+      try {
+        const db = await getDb();
+        let methods = await db.select().from(pmTable);
+
+        if (methods.length === 0) {
+          // Sembrar por defecto
+          await db.insert(pmTable).values([
+            { nombre: "Efectivo", comision_porcentaje: 0 },
+            { nombre: "Tarjeta Débito", comision_porcentaje: 3 },
+            { nombre: "Tarjeta Crédito", comision_porcentaje: 8 },
+            { nombre: "QR Mercado Pago", comision_porcentaje: 15 },
+          ]);
+          methods = await db.select().from(pmTable);
+        }
+
+        setPaymentMethodsList(methods.map((m: any) => ({
+          nombre: m.nombre,
+          comision: m.comision_porcentaje
+        })));
+        if (methods.length > 0) setPaymentMethod(methods[0].nombre);
+      } catch (error) {
+        console.error("Error al cargar metodos de pago", error);
+      }
+    }
+    initPM();
+  }, []);
 
   // Cargar productos al montar
   useEffect(() => {
@@ -96,13 +131,19 @@ export function SalesPanel() {
 
     try {
       const db = await getDb();
+      const id_operacion = crypto.randomUUID();
+      const selectedPM = paymentMethodsList.find(m => m.nombre === paymentMethod);
+      const commission = selectedPM ? selectedPM.comision : 0;
 
       for (const item of cart) {
         // Registrar la venta (id_usuario = 1 temporal hasta módulo auth)
         await db.insert(ventas).values({
+          id_operacion,
           id_producto: item.product.id_producto,
           cantidad: item.quantity,
           precio: item.product.precio,
+          metodo_pago: paymentMethod,
+          comision_porcentaje: commission,
           id_usuario: 1,
         });
 
@@ -157,13 +198,14 @@ export function SalesPanel() {
           </p>
         </div>
         {cart.length > 0 && (
-          <button
+          <Button
+            variant="danger"
             onClick={clearCart}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
+            className="flex items-center gap-2"
           >
             <X className="w-4 h-4" />
             Vaciar Carrito
-          </button>
+          </Button>
         )}
       </header>
 
@@ -172,13 +214,13 @@ export function SalesPanel() {
         <div className="lg:col-span-2 space-y-4">
           {/* Barra de búsqueda */}
           <div className="relative">
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
-              <Barcode className="text-gray-400 w-6 h-6 shrink-0" />
-              <input
+            <div className="flex items-center gap-3">
+              <Input
                 ref={searchInputRef}
+                icon={<Barcode className="w-5 h-5 text-emerald-600" />}
                 type="text"
-                placeholder="Escanear código de barras o buscar producto..."
-                className="w-full bg-transparent outline-none text-lg text-gray-800 placeholder:text-gray-400 font-medium"
+                placeholder="Escanear código de barras o buscar producto (Foco con Alt+B)"
+                className="text-lg py-3 w-full border-gray-200"
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -187,9 +229,6 @@ export function SalesPanel() {
                   if (searchResults.length > 0) setShowResults(true);
                 }}
               />
-              <kbd className="hidden sm:inline-block text-xs font-mono text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                Alt+B
-              </kbd>
             </div>
 
             {/* Dropdown de resultados */}
@@ -198,11 +237,10 @@ export function SalesPanel() {
                 {searchResults.map((product, idx) => (
                   <button
                     key={product.id_producto}
-                    className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors ${
-                      idx === selectedResultIndex
-                        ? "bg-blue-50 text-blue-800"
-                        : "hover:bg-gray-50 text-gray-800"
-                    }`}
+                    className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors ${idx === selectedResultIndex
+                      ? "bg-blue-50 text-blue-800"
+                      : "hover:bg-gray-50 text-gray-800"
+                      }`}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       addToCart(product);
@@ -222,11 +260,10 @@ export function SalesPanel() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                          product.stock > 0
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-600"
-                        }`}
+                        className={`text-xs px-2 py-0.5 rounded-full font-semibold ${product.stock > 0
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-600"
+                          }`}
                       >
                         {product.stock} un.
                       </span>
@@ -323,8 +360,14 @@ export function SalesPanel() {
                             </button>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-right font-mono text-gray-600">
-                          ${item.product.precio.toFixed(2)}
+                        <td className="py-3 px-4 text-right">
+                          <div className="w-24 ml-auto">
+                            <PriceInput
+                              value={item.product.precio}
+                              onChange={(val) => updatePrice(item.product.id_producto, val)}
+                              className="text-right py-1 px-2 text-sm font-semibold text-gray-700 bg-gray-50 hover:bg-white w-full border-gray-200"
+                            />
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-semibold text-gray-900">
                           ${item.subtotal.toFixed(2)}
@@ -379,17 +422,47 @@ export function SalesPanel() {
               </span>
             </div>
 
-            <button
+            <div className="mb-6 space-y-2">
+              <label className="text-sm font-medium text-gray-700">Método de Pago</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-lg p-3 text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500/50 transition-shadow transition-colors"
+                disabled={isProcessing}
+              >
+                {paymentMethodsList.map(pm => (
+                  <option key={pm.nombre} value={pm.nombre}>
+                    {pm.nombre} {pm.comision > 0 ? `(-${pm.comision}%)` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {(() => {
+              const selectedPM = paymentMethodsList.find(m => m.nombre === paymentMethod);
+              const commission = selectedPM?.comision || 0;
+              const lossAmount = total * (commission / 100);
+              if (commission > 0) {
+                return (
+                  <div className="mb-6 bg-red-50 border border-red-100 rounded-lg p-3 flex justify-between items-center text-sm">
+                    <span className="text-red-700 font-medium">Comisión retención ({commission}%)</span>
+                    <span className="text-red-600 font-bold">-${lossAmount.toFixed(2)}</span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            <Button
+              variant="primary"
+              size="lg"
               onClick={handleCheckout}
               disabled={cart.length === 0 || isProcessing}
-              className="w-full py-4 text-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-4 text-lg flex items-center justify-center gap-2"
             >
-              <span className="absolute inset-0 w-full h-full bg-white/20 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300"></span>
-              <Banknote className="w-6 h-6 relative z-10" />
-              <span className="relative z-10">
-                {isProcessing ? "Procesando..." : "Cobrar (F12)"}
-              </span>
-            </button>
+              <Banknote className="w-6 h-6" />
+              {isProcessing ? "Procesando..." : "Cobrar (F12)"}
+            </Button>
           </div>
         </div>
       </div>

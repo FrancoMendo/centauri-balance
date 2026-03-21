@@ -17,6 +17,7 @@ interface SalesState {
   addToCart: (product: Producto) => void;
   removeFromCart: (productId: number) => void;
   updateQuantity: (productId: number, quantity: number) => void;
+  updatePrice: (productId: number, newPrice: number) => void;
   clearCart: () => void;
 
   // Getters calculados
@@ -88,6 +89,21 @@ export const useSalesStore = create<SalesState>((set, get) => ({
               ...item,
               quantity,
               subtotal: quantity * item.product.precio,
+            }
+          : item
+      ),
+    });
+  },
+
+  updatePrice: (productId: number, newPrice: number) => {
+    if (newPrice < 0) return;
+    set({
+      cart: get().cart.map((item) =>
+        item.product.id_producto === productId
+          ? {
+              ...item,
+              product: { ...item.product, precio: newPrice },
+              subtotal: item.quantity * newPrice,
             }
           : item
       ),

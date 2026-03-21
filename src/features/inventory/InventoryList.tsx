@@ -4,6 +4,7 @@ import { Package, Plus, Edit2, Trash2 } from "lucide-react";
 import { AddProductModal } from "./AddProductModal";
 import { EditProductModal } from "./EditProductModal";
 import { Producto } from "../../lib/schema";
+import { Button } from "../../components/ui/Button";
 
 export function InventoryList() {
   const { products, isLoading, error, fetchProducts, deleteProduct } = useInventoryStore();
@@ -45,13 +46,12 @@ export function InventoryList() {
           <span className="hidden sm:inline-block text-xs font-mono text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">
             Alt+N / Ctrl+N
           </span>
-          <button 
+          <Button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-medium rounded-md transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4 text-white" />
             Nuevo Producto
-          </button>
+          </Button>
         </div>
       </div>
 

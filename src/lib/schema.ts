@@ -36,11 +36,23 @@ export const productos = sqliteTable("productos", {
 export type Producto = typeof productos.$inferSelect;
 export type NewProducto = typeof productos.$inferInsert;
 
+export const metodos_pago = sqliteTable("metodos_pago", {
+  id_metodo: integer("id_metodo").primaryKey({ autoIncrement: true }),
+  nombre: text("nombre").notNull(),
+  comision_porcentaje: real("comision_porcentaje").notNull().default(0),
+});
+
+export type MetodoPago = typeof metodos_pago.$inferSelect;
+export type NewMetodoPago = typeof metodos_pago.$inferInsert;
+
 export const ventas = sqliteTable("ventas", {
   id_venta: integer("id_venta").primaryKey({ autoIncrement: true }),
+  id_operacion: text("id_operacion").notNull().default(""), // Para agrupar productos de una misma venta
   id_producto: integer("id_producto").notNull().references(() => productos.id_producto),
   cantidad: integer("cantidad").notNull(),
   precio: real("precio").notNull(), // Precio al momento de la venta
+  metodo_pago: text("metodo_pago").notNull().default("Efectivo"), // Ej. Efectivo, Tarjeta, Transferencia
+  comision_porcentaje: real("comision_porcentaje").notNull().default(0), // Snapshot del % de pérdida al vender
   fecha: text("fecha").default(sql`(CURRENT_TIMESTAMP)`),
   id_usuario: integer("id_usuario").notNull().references(() => usuarios.id_usuario),
 });
@@ -51,7 +63,10 @@ export type NewVenta = typeof ventas.$inferInsert;
 export const egresos = sqliteTable("egresos", {
   id_egreso: integer("id_egreso").primaryKey({ autoIncrement: true }),
   descripcion: text("descripcion").notNull(),
+  categoria: text("categoria").notNull().default("Otros"), // Ej. Servicios, Proveedores, Limpieza
   monto: real("monto").notNull(),
+  metodo_pago: text("metodo_pago").notNull().default("Efectivo"), // Ej. Efectivo, Tarjeta, Transferencia
+  id_proveedor: integer("id_proveedor").references(() => proveedores.id_proveedor), // Opcional
   fecha: text("fecha").default(sql`(CURRENT_TIMESTAMP)`),
   id_usuario: integer("id_usuario").notNull().references(() => usuarios.id_usuario),
 });

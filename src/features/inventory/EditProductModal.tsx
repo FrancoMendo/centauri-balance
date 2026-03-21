@@ -3,6 +3,9 @@ import { useInventoryStore } from "../../store/useInventoryStore";
 import { X, Save } from "lucide-react";
 import { Producto } from "../../lib/schema";
 import { PriceInput } from "../../components/PriceInput";
+import { Input } from "../../components/ui/Input";
+import { Button } from "../../components/ui/Button";
+import { Label } from "../../components/ui/Label";
 
 interface EditProductModalProps {
   isOpen: boolean;
@@ -75,20 +78,19 @@ export function EditProductModal({ isOpen, onClose, product }: EditProductModalP
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label htmlFor="nombreE" className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-              <input
+              <Label htmlFor="nombreE">Nombre *</Label>
+              <Input
                 ref={firstInputRef}
                 id="nombreE"
                 type="text"
                 required
-                className="w-full border border-gray-300 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium"
                 value={formData.nombre || ""}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
               />
             </div>
             
             <div>
-              <label htmlFor="precioE" className="block text-sm font-medium text-gray-700 mb-1">Precio *</label>
+              <Label htmlFor="precioE">Precio *</Label>
               <PriceInput
                 id="precioE"
                 required
@@ -98,45 +100,44 @@ export function EditProductModal({ isOpen, onClose, product }: EditProductModalP
             </div>
 
             <div>
-              <label htmlFor="stockE" className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
-              <input
+              <Label htmlFor="stockE">Stock</Label>
+              <Input
                 id="stockE"
                 type="number"
                 min="0"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-mono"
+                className="font-mono"
                 value={formData.stock !== undefined ? formData.stock : ""}
                 onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value, 10) || 0 })}
               />
             </div>
 
             <div>
-              <label htmlFor="codigo_barrasE" className="block text-sm font-medium text-gray-700 mb-1">Cód. de Barras</label>
-              <input
+              <Label htmlFor="codigo_barrasE">Cód. de Barras</Label>
+              <Input
                 id="codigo_barrasE"
                 type="text"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-mono"
+                className="font-mono"
                 value={formData.codigo_barras || ""}
                 onChange={(e) => setFormData({ ...formData, codigo_barras: e.target.value })}
               />
             </div>
 
             <div>
-              <label htmlFor="categoriaE" className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-              <input
+              <Label htmlFor="categoriaE">Categoría</Label>
+              <Input
                 id="categoriaE"
                 type="text"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 value={formData.categoria || ""}
                 onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
               />
             </div>
 
             <div className="col-span-2">
-              <label htmlFor="descripcionE" className="block text-sm font-medium text-gray-700 mb-1">Descripción corta</label>
+              <Label htmlFor="descripcionE">Descripción corta</Label>
               <textarea
                 id="descripcionE"
                 rows={2}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all resize-none shadow-sm"
                 value={formData.descripcion || ""}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               ></textarea>
@@ -144,21 +145,20 @@ export function EditProductModal({ isOpen, onClose, product }: EditProductModalP
           </div>
 
           <div className="mt-8 flex items-center justify-end gap-3 pt-5 border-t border-gray-100">
-             <button
+             <Button
                 type="button"
+                variant="outline"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none transition-colors"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={isLoading}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none transition-colors disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {isLoading ? "Guardando..." : "Guardar Cambios"}
-              </button>
+              </Button>
           </div>
         </form>
       </div>
