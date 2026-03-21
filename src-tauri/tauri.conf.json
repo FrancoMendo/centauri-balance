@@ -12,9 +12,12 @@
   "app": {
     "windows": [
       {
-        "title": "centauri-balance",
-        "width": 800,
-        "height": 600
+        "title": "Centauri Balance",
+        "width": 1500,
+        "height": 1000,
+        "minWidth": 900,
+        "minHeight": 600,
+        "maximized": true
       }
     ],
     "security": {

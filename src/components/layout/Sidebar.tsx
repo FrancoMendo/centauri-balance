@@ -1,4 +1,4 @@
-import { ShoppingCart, PackageSearch, Wallet } from "lucide-react";
+import { ShoppingCart, PackageSearch, Wallet, Orbit } from "lucide-react";
 import clsx from "clsx";
 
 export type PageView = "sales" | "inventory" | "cash_register";
@@ -32,12 +32,17 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
 
   return (
     <aside className="w-64 bg-gray-900 text-gray-300 min-h-screen flex flex-col fixed left-0 top-0">
-      <div className="p-6 border-b border-gray-800">
-        <h1 className="text-xl font-bold text-white tracking-wide">
-          <span className="text-blue-500">C</span>entauri<br />
-          Balance
-        </h1>
-        <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-semibold">POS System v1.0</p>
+      <div className="p-6 border-b border-gray-800 flex items-start gap-4">
+        <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/20 text-white shrink-0">
+          <Orbit className="w-7 h-7" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold tracking-wide leading-tight text-white">
+            Centauri
+            <span className="block text-blue-400">Balance</span>
+          </h1>
+          <p className="text-[10px] text-gray-400 mt-1.5 font-mono uppercase tracking-[0.2em] font-semibold">POS v1.0</p>
+        </div>
       </div>
 
       <nav className="flex-1 py-6 px-4 space-y-2">
