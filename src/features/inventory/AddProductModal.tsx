@@ -20,11 +20,14 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
   const [formData, setFormData] = useState<NewProducto>({
     nombre: "",
     categoria: "",
-    precio: 0,
+    precio_lista: 0,
+    precio_venta: 0,
     stock: 0,
     codigo_barras: "",
     descripcion: "",
   });
+
+  const [margen, setMargen] = useState<string>("");
 
   // Escuchar la tecla "Escape" para cerrar el modal
   useEffect(() => {
@@ -44,11 +47,38 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
       setTimeout(() => firstInputRef.current?.focus(), 50);
     } else {
       // Limpiar el estado al cerrar
-      setFormData({ nombre: "", categoria: "", precio: 0, stock: 0, codigo_barras: "", descripcion: "" });
+      setFormData({ nombre: "", categoria: "", precio_lista: 0, precio_venta: 0, stock: 0, codigo_barras: "", descripcion: "" });
+      setMargen("");
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const handlePrecioListaChange = (val: number) => {
+    setFormData(prev => ({ ...prev, precio_lista: val }));
+    const m = parseFloat(margen);
+    if (!isNaN(m) && val >= 0) {
+       const newPrecioVenta = Math.round(val * (1 + m / 100));
+       setFormData(prev => ({ ...prev, precio_venta: newPrecioVenta }));
+    }
+  };
+
+  const handlePrecioVentaChange = (val: number) => {
+    setFormData(prev => ({ ...prev, precio_venta: val }));
+    if (formData.precio_lista && formData.precio_lista > 0) {
+       const newMargen = ((val / formData.precio_lista) - 1) * 100;
+       setMargen(newMargen.toFixed(2).replace(/\.00$/, "")); 
+    }
+  };
+
+  const handleMargenChange = (val: string) => {
+    setMargen(val);
+    const m = parseFloat(val);
+    if (!isNaN(m) && formData.precio_lista) {
+       const newPrecioVenta = Math.round(formData.precio_lista * (1 + m / 100));
+       setFormData(prev => ({ ...prev, precio_venta: newPrecioVenta }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +87,8 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
     // Convertir de strings a num por si acaso vienen como string desde los inputs
     const productToSave: NewProducto = {
       ...formData,
-      precio: Number(formData.precio),
+      precio_lista: Number(formData.precio_lista),
+      precio_venta: Number(formData.precio_venta),
       stock: Number(formData.stock)
     };
     
@@ -99,15 +130,41 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
               />
             </div>
             
-            <div>
-              <Label htmlFor="precio">Precio *</Label>
-              <PriceInput
-                id="precio"
-                required
-                value={formData.precio}
-                onChange={(numericValue: number) => setFormData({ ...formData, precio: numericValue })}
-                placeholder="0"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 col-span-2">
+              <div>
+                <Label htmlFor="precio_lista">Precio Lista</Label>
+                <PriceInput
+                  id="precio_lista"
+                  value={formData.precio_lista || 0}
+                  onChange={handlePrecioListaChange}
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="margen">Ganancia (%)</Label>
+                <Input
+                  id="margen"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Ej. 30"
+                  className="font-mono text-right"
+                  value={margen}
+                  onChange={(e) => handleMargenChange(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="precio_venta">Precio Venta *</Label>
+                <PriceInput
+                  id="precio_venta"
+                  required
+                  value={formData.precio_venta || 0}
+                  onChange={handlePrecioVentaChange}
+                  placeholder="0"
+                />
+              </div>
             </div>
 
             <div>

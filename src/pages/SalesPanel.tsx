@@ -141,7 +141,7 @@ export function SalesPanel() {
           id_operacion,
           id_producto: item.product.id_producto,
           cantidad: item.quantity,
-          precio: item.product.precio,
+          precio_venta: item.product.precio_venta,
           metodo_pago: paymentMethod,
           comision_porcentaje: commission,
           id_usuario: 1,
@@ -268,7 +268,7 @@ export function SalesPanel() {
                         {product.stock} un.
                       </span>
                       <span className="font-semibold text-gray-900">
-                        ${product.precio.toFixed(2)}
+                        ${product.precio_venta.toFixed(2)}
                       </span>
                     </div>
                   </button>
@@ -363,7 +363,7 @@ export function SalesPanel() {
                         <td className="py-3 px-4 text-right">
                           <div className="w-24 ml-auto">
                             <PriceInput
-                              value={item.product.precio}
+                              value={item.product.precio_venta}
                               onChange={(val) => updatePrice(item.product.id_producto, val)}
                               className="text-right py-1 px-2 text-sm font-semibold text-gray-700 bg-gray-50 hover:bg-white w-full border-gray-200"
                             />

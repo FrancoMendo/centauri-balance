@@ -26,7 +26,8 @@ export const productos = sqliteTable("productos", {
   id_producto: integer("id_producto").primaryKey({ autoIncrement: true }),
   nombre: text("nombre").notNull(),
   categoria: text("categoria"),
-  precio: real("precio").notNull(),
+  precio_lista: real("precio_lista").notNull().default(0),
+  precio_venta: real("precio_venta").notNull(),
   stock: integer("stock").notNull().default(0),
   codigo_barras: text("codigo_barras").unique(),
   descripcion: text("descripcion"),
@@ -50,7 +51,7 @@ export const ventas = sqliteTable("ventas", {
   id_operacion: text("id_operacion").notNull().default(""), // Para agrupar productos de una misma venta
   id_producto: integer("id_producto").notNull().references(() => productos.id_producto),
   cantidad: integer("cantidad").notNull(),
-  precio: real("precio").notNull(), // Precio al momento de la venta
+  precio_venta: real("precio_venta").notNull(), // Precio al momento de la venta
   metodo_pago: text("metodo_pago").notNull().default("Efectivo"), // Ej. Efectivo, Tarjeta, Transferencia
   comision_porcentaje: real("comision_porcentaje").notNull().default(0), // Snapshot del % de pérdida al vender
   fecha: text("fecha").default(sql`(CURRENT_TIMESTAMP)`),

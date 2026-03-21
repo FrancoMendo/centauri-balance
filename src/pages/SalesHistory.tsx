@@ -13,7 +13,7 @@ interface SaleOperation {
   items: Array<{
     nombre_producto: string;
     cantidad: number;
-    precio: number;
+    precio_venta: number;
     subtotal: number;
   }>;
 }
@@ -39,7 +39,7 @@ export function SalesHistory() {
           metodo_pago: ventas.metodo_pago,
           comision_porcentaje: ventas.comision_porcentaje,
           cantidad: ventas.cantidad,
-          precio_venta: ventas.precio,
+          precio_venta: ventas.precio_venta,
           nombre_producto: productosTable.nombre,
         })
         .from(ventas)
@@ -66,7 +66,7 @@ export function SalesHistory() {
         acc[id_op].items.push({
           nombre_producto: row.nombre_producto || "Producto Desconocido",
           cantidad: row.cantidad,
-          precio: row.precio_venta,
+          precio_venta: row.precio_venta,
           subtotal: subtotal,
         });
 
@@ -189,7 +189,7 @@ export function SalesHistory() {
                                   <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                                     <td className="py-2 px-4 font-medium text-gray-800">{item.nombre_producto}</td>
                                     <td className="py-2 px-4 text-center text-gray-600">{item.cantidad}</td>
-                                    <td className="py-2 px-4 text-right text-gray-500">${item.precio.toFixed(2)}</td>
+                                    <td className="py-2 px-4 text-right text-gray-500">${item.precio_venta.toFixed(2)}</td>
                                     <td className="py-2 px-4 text-right font-medium text-gray-700">${item.subtotal.toFixed(2)}</td>
                                   </tr>
                                 ))}

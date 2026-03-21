@@ -5,7 +5,7 @@ import { Producto } from "../lib/schema";
 export interface CartItem {
   product: Producto;
   quantity: number;
-  subtotal: number; // precio * cantidad
+  subtotal: number; // precio_venta * cantidad
 }
 
 interface SalesState {
@@ -47,7 +47,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
             ? {
                 ...item,
                 quantity: item.quantity + 1,
-                subtotal: (item.quantity + 1) * item.product.precio,
+                subtotal: (item.quantity + 1) * item.product.precio_venta,
               }
             : item
         ),
@@ -60,7 +60,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
           {
             product,
             quantity: 1,
-            subtotal: product.precio,
+            subtotal: product.precio_venta,
           },
         ],
       });
@@ -88,7 +88,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
           ? {
               ...item,
               quantity,
-              subtotal: quantity * item.product.precio,
+              subtotal: quantity * item.product.precio_venta,
             }
           : item
       ),
@@ -102,7 +102,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         item.product.id_producto === productId
           ? {
               ...item,
-              product: { ...item.product, precio: newPrice },
+              product: { ...item.product, precio_venta: newPrice },
               subtotal: item.quantity * newPrice,
             }
           : item

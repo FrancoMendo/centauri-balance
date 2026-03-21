@@ -57,7 +57,7 @@ export const useCashRegisterStore = create<CashRegisterState>((set, get) => ({
       // Sumar ventas del día
       const salesResult = await db
         .select({
-          total: sql<number>`COALESCE(SUM(${ventas.precio} * ${ventas.cantidad}), 0)`,
+          total: sql<number>`COALESCE(SUM(${ventas.precio_venta} * ${ventas.cantidad}), 0)`,
           count: sql<number>`COUNT(*)`,
         })
         .from(ventas)

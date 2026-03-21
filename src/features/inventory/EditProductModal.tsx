@@ -19,13 +19,21 @@ export function EditProductModal({ isOpen, onClose, product }: EditProductModalP
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<Partial<Producto>>({});
+  const [margen, setMargen] = useState<string>("");
 
   useEffect(() => {
     if (isOpen && product) {
       setFormData(product);
+      if (product.precio_lista && product.precio_lista > 0 && product.precio_venta) {
+        const m = ((product.precio_venta / product.precio_lista) - 1) * 100;
+        setMargen(m.toFixed(2).replace(/\.00$/, ""));
+      } else {
+        setMargen("");
+      }
       setTimeout(() => firstInputRef.current?.focus(), 50);
     } else {
       setFormData({});
+      setMargen("");
     }
   }, [isOpen, product]);
 
@@ -42,13 +50,40 @@ export function EditProductModal({ isOpen, onClose, product }: EditProductModalP
 
   if (!isOpen || !product) return null;
 
+  const handlePrecioListaChange = (val: number) => {
+    setFormData(prev => ({ ...prev, precio_lista: val }));
+    const m = parseFloat(margen);
+    if (!isNaN(m) && val >= 0) {
+       const newPrecioVenta = Math.round(val * (1 + m / 100));
+       setFormData(prev => ({ ...prev, precio_venta: newPrecioVenta }));
+    }
+  };
+
+  const handlePrecioVentaChange = (val: number) => {
+    setFormData(prev => ({ ...prev, precio_venta: val }));
+    if (formData.precio_lista && formData.precio_lista > 0) {
+       const newMargen = ((val / formData.precio_lista) - 1) * 100;
+       setMargen(newMargen.toFixed(2).replace(/\.00$/, "")); 
+    }
+  };
+
+  const handleMargenChange = (val: string) => {
+    setMargen(val);
+    const m = parseFloat(val);
+    if (!isNaN(m) && formData.precio_lista) {
+       const newPrecioVenta = Math.round(formData.precio_lista * (1 + m / 100));
+       setFormData(prev => ({ ...prev, precio_venta: newPrecioVenta }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
     
     const productToUpdate = {
       ...formData,
-      precio: Number(formData.precio),
+      precio_lista: Number(formData.precio_lista || 0),
+      precio_venta: Number(formData.precio_venta || 0),
       stock: Number(formData.stock)
     };
     
@@ -89,14 +124,39 @@ export function EditProductModal({ isOpen, onClose, product }: EditProductModalP
               />
             </div>
             
-            <div>
-              <Label htmlFor="precioE">Precio *</Label>
-              <PriceInput
-                id="precioE"
-                required
-                value={formData.precio || 0}
-                onChange={(numericValue: number) => setFormData({ ...formData, precio: numericValue })}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 col-span-2">
+              <div>
+                <Label htmlFor="precio_listaE">Precio Lista</Label>
+                <PriceInput
+                  id="precio_listaE"
+                  value={formData.precio_lista || 0}
+                  onChange={handlePrecioListaChange}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="margenE">Ganancia (%)</Label>
+                <Input
+                  id="margenE"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Ej. 30"
+                  className="font-mono text-right"
+                  value={margen}
+                  onChange={(e) => handleMargenChange(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="precio_ventaE">Precio Venta *</Label>
+                <PriceInput
+                  id="precio_ventaE"
+                  required
+                  value={formData.precio_venta || 0}
+                  onChange={handlePrecioVentaChange}
+                />
+              </div>
             </div>
 
             <div>
