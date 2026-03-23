@@ -112,12 +112,15 @@ export function SalesPanel() {
 
   }, [searchQuery, products]);
 
-  // Atajo global: Alt+B para enfocar el buscador
+  // Atajos globales: Alt+B para buscador, Alt+N para ítem manual
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && e.key.toLowerCase() === "b") {
         e.preventDefault();
         searchInputRef.current?.focus();
+      } else if (e.altKey && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        setIsGenericModalOpen(true);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -338,7 +341,7 @@ export function SalesPanel() {
   const itemCount = getItemCount();
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="w-full space-y-6 animate-in fade-in duration-300">
       <header className="flex items-center justify-between pb-4 border-b border-gray-200">
         <div>
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-600">
@@ -353,10 +356,10 @@ export function SalesPanel() {
             className="flex items-center gap-2 bg-emerald-100/50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
             variant="outline"
             onClick={handleAddGenericClick}
-            title="Añadir ítem manual como Pan, Fiambre, etc."
+            title="Añadir ítem manual como Pan, Fiambre, etc. (Alt+N)"
           >
             <Plus className="w-5 h-5" />
-            Sin Código
+            Sin Código <span className="hidden lg:inline-block ml-1 text-xs opacity-60 font-mono">(Alt+N)</span>
           </Button>
 
           {cart.length > 0 && (
@@ -529,8 +532,8 @@ export function SalesPanel() {
                             <PriceInput
                               value={item.product.precio_venta}
                               onChange={(val) => updatePrice(item.product.id_producto, val)}
-                              className={`text-right py-1 px-2 text-sm font-semibold text-gray-700 hover:bg-white w-full ${item.product.id_producto < 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}
-                              placeholder={item.product.id_producto < 0 ? 'Monto manual' : undefined}
+                              className={`text-right py-1 px-2 text-sm font-semibold text-gray-700 hover:bg-white w-full transition-colors ${item.product.precio_venta === 0 ? 'bg-amber-100 border-amber-400 ring-2 ring-amber-400/50 text-amber-900 shadow-sm' : 'bg-gray-50 border-gray-200'}`}
+                              placeholder={item.product.precio_venta === 0 ? 'Monto requerido' : undefined}
                             />
                           </div>
                         </td>

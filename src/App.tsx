@@ -43,13 +43,15 @@ function App() {
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
       
       {/* Contenido principal - con margin left para la sidebar fija */}
-      <main className="flex-1 ml-64 p-8 max-w-[1400px]">
-         {currentPage === "sales" && <SalesPanel />}
-         {currentPage === "sales_history" && <SalesHistory />}
-         {currentPage === "inventory" && <InventoryManagement />}
-         {currentPage === "cash_register" && <CashRegisterClose />}
-         {currentPage === "expense_management" && <ExpenseManagement />}
-         {currentPage === "payment_methods" && <PaymentMethodsManagement />}
+      <main className="flex-1 ml-64 p-8 min-w-0 flex justify-center">
+        <div className="w-[90%] 2xl:w-[85%] max-w-[1600px]">
+          {currentPage === "sales" && <SalesPanel />}
+          {currentPage === "sales_history" && <SalesHistory />}
+          {currentPage === "inventory" && <InventoryManagement />}
+          {currentPage === "cash_register" && <CashRegisterClose />}
+          {currentPage === "expense_management" && <ExpenseManagement />}
+          {currentPage === "payment_methods" && <PaymentMethodsManagement />}
+        </div>
       </main>
     </div>
   );
