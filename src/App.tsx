@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import "./App.css";
+import { Toaster } from 'sonner';
 import { Sidebar, PageView } from "./components/layout/Sidebar";
 import { SalesPanel } from "./pages/SalesPanel";
 import { SalesHistory } from "./pages/SalesHistory";
@@ -38,6 +39,7 @@ function App() {
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
+      <Toaster position="top-right" richColors closeButton />
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
       
       {/* Contenido principal - con margin left para la sidebar fija */}

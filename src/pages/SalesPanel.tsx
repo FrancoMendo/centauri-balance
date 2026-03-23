@@ -6,6 +6,8 @@ import { PriceInput } from "../components/PriceInput";
 import { PriceDisplay } from "../components/ui/PriceDisplay";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
+import { toast } from "sonner";
+import { GenericProductModal } from "../features/sales/GenericProductModal";
 import { getDb } from "../lib/db";
 import { productos as productosTable } from "../lib/schema";
 import { eq, sql } from "drizzle-orm";
@@ -24,6 +26,7 @@ export function SalesPanel() {
   const [selectedResultIndex, setSelectedResultIndex] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("Efectivo");
   const [paymentMethodsList, setPaymentMethodsList] = useState<{ nombre: string; comision: number }[]>([]);
+  const [isGenericModalOpen, setIsGenericModalOpen] = useState(false);
 
   // Referencias para escaneo en segundo plano (Pistola Láser)
   const bufferRef = useRef("");
@@ -220,18 +223,37 @@ export function SalesPanel() {
       const selectedPM = paymentMethodsList.find(m => m.nombre === paymentMethod);
       const commission = selectedPM ? selectedPM.comision : 0;
 
-      // Obtener el ID real del producto genérico si hay items huérfanos (-ID)
-      let realGenericId: number | null = null;
-      const genericRows = await db.select().from(productosTable).where(eq(productosTable.codigo_barras, GENERIC_BARCODE));
-      if (genericRows.length > 0) {
-        realGenericId = genericRows[0].id_producto;
-      }
-
       for (const item of cart) {
-        // Los items sin código (Pan, etc.) usan IDs negativos falsos temporales. Mapearlos al Real Genérico ID para la BD.
-        const dbProductId = item.product.id_producto < 0 ? (realGenericId || 1) : item.product.id_producto;
+        let dbProductId = item.product.id_producto;
 
-        // Registrar la venta (id_usuario = 1 temporal)
+        // Si es un ítem manual/huérfano (ID negativo), buscamos su nombre o lo auto-creamos
+        if (dbProductId < 0) {
+          const matchRows = await db.select().from(productosTable).where(eq(productosTable.nombre, item.product.nombre));
+          if (matchRows.length > 0) {
+            dbProductId = matchRows[0].id_producto;
+          } else {
+            // Auto-crear producto en el inventario para que el Historial de Ventas pueda mostrar su nombre
+            const insertResult = await db.insert(productosTable).values({
+              nombre: item.product.nombre,
+              categoria: "Varios",
+              precio_lista: item.product.precio_venta,
+              precio_venta: item.product.precio_venta,
+              stock: 999999,
+              codigo_barras: null,
+              descripcion: "Autocreado en caja rápida",
+            }).returning({ id: productosTable.id_producto });
+            
+            if (insertResult.length > 0) {
+               dbProductId = insertResult[0].id;
+            } else {
+               // Fallback robusto por si el driver driver no retorna el insertedId bien
+               const latest = await db.select().from(productosTable).where(eq(productosTable.nombre, item.product.nombre));
+               dbProductId = latest[0].id_producto;
+            }
+          }
+        }
+
+        // Registrar la venta
         await db.insert(ventas).values({
           id_operacion,
           id_producto: dbProductId,
@@ -242,21 +264,34 @@ export function SalesPanel() {
           id_usuario: 1,
         });
 
-        // Descontar stock del producto (incluso si es el genérico, descuenta de infinito)
+        // Descontar stock del producto
         await db
           .update(productosTable)
           .set({ stock: sql`${productosTable.stock} - ${item.quantity}` })
           .where(eq(productosTable.id_producto, dbProductId));
+
+        // Novedad: Si el producto original NO tenía precio ($0) y se lo establecimos en caja, lo guardamos permanentemente
+        if (dbProductId > 0 && item.product.id_producto > 0) {
+          const originalProduct = products.find(p => p.id_producto === item.product.id_producto);
+          if (originalProduct && originalProduct.precio_venta === 0 && item.product.precio_venta > 0) {
+            await db
+              .update(productosTable)
+              .set({ precio_venta: item.product.precio_venta })
+              .where(eq(productosTable.id_producto, item.product.id_producto));
+            // Actualizamos en local si alguien busca el mismo id despues en memoria temporal
+            originalProduct.precio_venta = item.product.precio_venta;
+          }
+        }
       }
 
       clearCart();
       await fetchProducts();
       await logAction(`Venta registrada exitosamente por $${total.toFixed(2)} (${cart.length} ítems, Medio: ${paymentMethod})`);
-      alert("✅ Venta registrada con éxito.");
+      toast.success("Venta registrada con éxito.");
     } catch (error) {
       console.error("Error al procesar la venta:", error);
       await logAction(`Error intentando registrar venta: ${(error as Error).message}`);
-      alert("❌ Error al procesar la venta: " + (error as Error).message);
+      toast.error("Error al procesar la venta: " + (error as Error).message);
     } finally {
       setIsProcessing(false);
     }
@@ -280,18 +315,20 @@ export function SalesPanel() {
   });
 
   const handleAddGenericClick = () => {
-    // Creamos un producto al vuelo con ID negativo altamente improbable, para que no colisionen
-    // si el usuario agrega múltiples items genéricos "Pan" y "Queso"
+    setIsGenericModalOpen(true);
+  };
+
+  const handleConfirmGenericProduct = (nombre: string, monto: number) => {
     const fakeId = -Math.round(performance.now() + Math.random() * 1000);
     const orphanGeneric = {
       id_producto: fakeId,
-      nombre: "Productos sin código", 
+      nombre: nombre,
       categoria: "Varios",
-      precio_lista: 0,
-      precio_venta: 0,
+      precio_lista: monto,
+      precio_venta: monto,
       stock: 0,
-      codigo_barras: GENERIC_BARCODE,
-      descripcion: "",
+      codigo_barras: null,
+      descripcion: "Ingreso manual",
       id_proveedor: null
     };
     addToCart(orphanGeneric as any);
@@ -599,6 +636,13 @@ export function SalesPanel() {
           </div>
         </div>
       </div>
+      
+      {/* Modal para Items Manuales / Sin Código */}
+      <GenericProductModal 
+        isOpen={isGenericModalOpen}
+        onClose={() => setIsGenericModalOpen(false)}
+        onAdd={handleConfirmGenericProduct}
+      />
     </div>
   );
 }
