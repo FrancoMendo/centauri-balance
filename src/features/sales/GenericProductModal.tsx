@@ -95,6 +95,9 @@ export function GenericProductModal({ isOpen, onClose, onAdd }: GenericProductMo
                 onChange={(val) => setMonto(val)}
                 className="w-full text-lg py-2"
                 placeholder="0.00"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && monto > 0) handleAdd();
+                }}
               />
             </div>
           </div>
