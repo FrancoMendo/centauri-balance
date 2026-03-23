@@ -1,14 +1,7 @@
 import { useEffect, useState, useRef } from "react";
-import {
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Wallet,
-  Plus,
-  Trash2,
-  X,
-  Save,
-} from "lucide-react";
+import { Calculator, TrendingUp, TrendingDown, DollarSign, Plus, Trash2, X, Save } from "lucide-react";
+import { PriceDisplay } from "../components/ui/PriceDisplay";
+import { PriceInput } from "../components/PriceInput";
 import { Input } from "../components/ui/Input";
 import { Label } from "../components/ui/Label";
 import { Button } from "../components/ui/Button";
@@ -30,7 +23,7 @@ export function CashRegisterClose() {
 
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [expenseDesc, setExpenseDesc] = useState("");
-  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState<number>(0);
   const descInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -56,7 +49,7 @@ export function CashRegisterClose() {
       setTimeout(() => descInputRef.current?.focus(), 50);
     } else {
       setExpenseDesc("");
-      setExpenseAmount("");
+      setExpenseAmount(0);
     }
   }, [isExpenseModalOpen]);
 
@@ -68,7 +61,7 @@ export function CashRegisterClose() {
 
     await addExpense({
       descripcion: expenseDesc.trim(),
-      monto: Number(expenseAmount),
+      monto: expenseAmount,
       id_usuario: 1, // Temporal hasta módulo de auth
     });
 
@@ -138,9 +131,9 @@ export function CashRegisterClose() {
             <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">
               Ingresos del Período
             </p>
-            <h3 className="text-2xl font-bold text-gray-900">
-              ${todaySales.total.toFixed(2)}
-            </h3>
+            <p className="text-3xl font-bold text-gray-900 mt-2">
+              <PriceDisplay amount={todaySales.total} />
+            </p>
             <span className="text-sm font-medium text-emerald-600 mt-2 block">
               {todaySales.count} venta{todaySales.count !== 1 ? "s" : ""}{" "}
               registrada{todaySales.count !== 1 ? "s" : ""}
@@ -156,9 +149,9 @@ export function CashRegisterClose() {
             <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">
               Egresos / Gastos
             </p>
-            <h3 className="text-2xl font-bold text-gray-900">
-              ${todayExpenses.total.toFixed(2)}
-            </h3>
+            <p className="text-3xl font-bold text-gray-900 mt-2">
+              <PriceDisplay amount={todayExpenses.total} />
+            </p>
             <span className="text-sm font-medium text-red-500 mt-2 block">
               {todayExpenses.count} retiro{todayExpenses.count !== 1 ? "s" : ""}
             </span>
@@ -173,11 +166,9 @@ export function CashRegisterClose() {
             <p className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-1">
               Balance en Caja
             </p>
-            <h3
-              className={`text-3xl font-bold ${balance >= 0 ? "text-emerald-400" : "text-red-400"}`}
-            >
-              ${balance.toFixed(2)}
-            </h3>
+            <p className={`text-4xl font-black mt-2 tracking-tight ${balance >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+              <PriceDisplay amount={balance} />
+            </p>
             <span className="text-sm font-medium text-gray-300 mt-2 block">
               Ingresos − Egresos
             </span>
@@ -196,7 +187,7 @@ export function CashRegisterClose() {
 
         {expenses.length === 0 ? (
           <div className="p-10 text-center text-gray-400">
-            <Wallet className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+            <Calculator className="w-12 h-12 mx-auto mb-3 text-gray-200" />
             <p className="font-medium">No hay egresos registrados en este período.</p>
             <p className="text-sm mt-1">
               Presione{" "}
@@ -225,8 +216,8 @@ export function CashRegisterClose() {
                   <td className="py-3 px-6 font-medium text-gray-800">
                     {exp.descripcion}
                   </td>
-                  <td className="py-3 px-6 text-right font-mono font-semibold text-red-600">
-                    -${exp.monto.toFixed(2)}
+                  <td className="py-3 px-6 text-right">
+                    <PriceDisplay amount={-exp.monto} prefix="" className="text-lg font-bold text-red-600 block" />
                   </td>
                   <td className="py-3 px-6 text-right text-sm text-gray-500 font-mono">
                     {exp.fecha
@@ -290,16 +281,10 @@ export function CashRegisterClose() {
 
               <div>
                 <Label htmlFor="expAmount">Monto ($) *</Label>
-                <Input
-                  id="expAmount"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
+                <PriceInput
                   required
-                  placeholder="0.00"
-                  className="focus:ring-amber-500 font-mono"
                   value={expenseAmount}
-                  onChange={(e) => setExpenseAmount(e.target.value)}
+                  onChange={(val) => setExpenseAmount(val)}
                 />
               </div>
 

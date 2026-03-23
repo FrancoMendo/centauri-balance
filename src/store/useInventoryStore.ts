@@ -4,6 +4,7 @@ import { Producto, NewProducto } from "../lib/schema";
 import { getDb } from "../lib/db";
 import { productos } from "../lib/schema";
 import { eq } from "drizzle-orm";
+import { logAction } from "../lib/logger";
 
 interface InventoryState {
   products: Producto[];
@@ -44,8 +45,12 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       // Fetch latest products state after addition (or manually update state context)
       const updatedProducts = await db.select().from(productos);
       set({ products: updatedProducts as Producto[], isLoading: false });
+      
+      await logAction(`Producto registrado exitosamente: ${newProduct.nombre} (ID Proveedor: ${newProduct.id_proveedor || "N/A"})`);
     } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+      const errMessage = (error as Error).message;
+      set({ error: errMessage, isLoading: false });
+      await logAction(`Error al registrar producto ${newProduct.nombre}: ${errMessage}`);
     }
   },
 
@@ -64,8 +69,12 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         ),
         isLoading: false
       });
+      
+      await logAction(`Producto actualizado (ID: ${id}): ${productUpdates.nombre || "Sin nombre"}`);
     } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+      const errMessage = (error as Error).message;
+      set({ error: errMessage, isLoading: false });
+      await logAction(`Error al actualizar producto (ID: ${id}): ${errMessage}`);
     }
   },
 
@@ -80,8 +89,12 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         products: get().products.filter(p => p.id_producto !== id),
         isLoading: false
       });
+      
+      await logAction(`Producto eliminado (ID: ${id})`);
     } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+      const errMessage = (error as Error).message;
+      set({ error: errMessage, isLoading: false });
+      await logAction(`Error al eliminar producto (ID: ${id}): ${errMessage}`);
     }
   }
 }));

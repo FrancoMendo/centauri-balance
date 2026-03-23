@@ -15,6 +15,7 @@ interface AddProductModalProps {
 export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
   const addProduct = useInventoryStore((state) => state.addProduct);
   const isLoading = useInventoryStore((state) => state.isLoading);
+  const products = useInventoryStore((state) => state.products);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<NewProducto>({
@@ -28,6 +29,8 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
   });
 
   const [margen, setMargen] = useState<string>("");
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState(false);
 
   // Escuchar la tecla "Escape" para cerrar el modal
   useEffect(() => {
@@ -49,6 +52,7 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
       // Limpiar el estado al cerrar
       setFormData({ nombre: "", categoria: "", precio_lista: 0, precio_venta: 0, stock: 0, codigo_barras: "", descripcion: "" });
       setMargen("");
+      setLocalError(null);
     }
   }, [isOpen]);
 
@@ -83,6 +87,26 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
+    setLocalError(null);
+
+    // Validación duplicidad
+    const barcode = formData.codigo_barras?.trim();
+    if (barcode) {
+      const barcodeExists = products.find(p => p.codigo_barras === barcode);
+      if (barcodeExists) {
+        setLocalError(`El código de barras "${barcode}" ya le pertenece al producto: "${barcodeExists.nombre}".`);
+        return;
+      }
+    }
+
+    const nm = formData.nombre?.trim().toLowerCase() || "";
+    if (nm) {
+      const nameExists = products.find(p => (p.nombre.trim().toLowerCase()) === nm);
+      if (nameExists) {
+        setLocalError(`Ya existe un producto registrado bajo el nombre "${nameExists.nombre}".`);
+        return;
+      }
+    }
     
     // Convertir de strings a num por si acaso vienen como string desde los inputs
     const productToSave: NewProducto = {
@@ -93,16 +117,37 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
     };
     
     await addProduct(productToSave);
-    onClose();
+    
+    const storeError = useInventoryStore.getState().error;
+    if (storeError) {
+       setLocalError(storeError);
+       return;
+    }
+
+    setSuccessToast(true);
+    setTimeout(() => {
+      setSuccessToast(false);
+      onClose();
+    }, 1500);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div 
-        className="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden"
+        className="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden relative"
         role="dialog"
         aria-modal="true"
       >
+        {/* Toast Flotante */}
+        {successToast && (
+          <div className="absolute top-4 right-1/2 translate-x-1/2 bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-in slide-in-from-top-4 fade-in z-50">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-semibold tracking-wide">¡Registro exitoso!</span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50">
           <h3 className="text-xl font-semibold text-gray-800">Cargar Nuevo Producto</h3>
           <button 
@@ -116,6 +161,12 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {localError && (
+            <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg p-3 text-sm mb-4 flex items-start gap-2 animate-in slide-in-from-top-2">
+              <span className="font-bold">Error:</span>
+              <span>{localError}</span>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <Label htmlFor="nombre">Nombre *</Label>
@@ -188,6 +239,11 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
                 className="font-mono"
                 value={formData.codigo_barras || ""}
                 onChange={(e) => setFormData({ ...formData, codigo_barras: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                  }
+                }}
               />
             </div>
 

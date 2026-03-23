@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { History, Receipt, CalendarClock, ChevronDown, ChevronUp } from "lucide-react";
+import { History, CalendarClock, ChevronDown, ChevronUp, Receipt } from "lucide-react";
+import { PriceDisplay } from "../components/ui/PriceDisplay";
 import { getDb } from "../lib/db";
 import { ventas, productos as productosTable } from "../lib/schema";
 import { eq, desc } from "drizzle-orm";
@@ -154,13 +155,15 @@ export function SalesHistory() {
                           {op.metodo_pago}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-right border-l border-gray-50 bg-gray-50/30">
-                        <div className="font-bold text-gray-900">${op.total.toFixed(2)}</div>
-                        {op.comision_porcentaje > 0 && (
-                          <div className="text-xs text-red-500 font-medium">
-                            -${(op.total * (op.comision_porcentaje / 100)).toFixed(2)} retención ({op.comision_porcentaje}%)
-                          </div>
-                        )}
+                      <td className="py-4 px-6 text-right">
+                        <div className="text-right">
+                          <PriceDisplay amount={op.total} className="font-bold text-gray-900 block" />
+                          {op.comision_porcentaje > 0 && (
+                            <div className="text-xs text-red-500 font-medium mt-1">
+                              <PriceDisplay amount={-(op.total * (op.comision_porcentaje / 100))} prefix="" /> retención ({op.comision_porcentaje}%)
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="py-4 px-6 text-center text-gray-400">
                         {expandedOp === op.id_operacion ? (
@@ -188,9 +191,13 @@ export function SalesHistory() {
                                 {op.items.map((item, idx) => (
                                   <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                                     <td className="py-2 px-4 font-medium text-gray-800">{item.nombre_producto}</td>
-                                    <td className="py-2 px-4 text-center text-gray-600">{item.cantidad}</td>
-                                    <td className="py-2 px-4 text-right text-gray-500">${item.precio_venta.toFixed(2)}</td>
-                                    <td className="py-2 px-4 text-right font-medium text-gray-700">${item.subtotal.toFixed(2)}</td>
+                                    <td className="py-2 px-4 text-center">{item.cantidad} un.</td>
+                                    <td className="py-2 px-4 text-right text-gray-500">
+                                      <PriceDisplay amount={item.precio_venta} />
+                                    </td>
+                                    <td className="py-2 px-4 text-right font-medium text-gray-700">
+                                      <PriceDisplay amount={item.subtotal} />
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>

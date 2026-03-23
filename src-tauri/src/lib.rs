@@ -88,6 +88,34 @@ pub fn run() {
                     `id_usuario` integer NOT NULL
                 );",
             kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 8,
+            description: "sync_drizzle_schema_updates",
+            sql: "
+                CREATE TABLE IF NOT EXISTS `metodos_pago` (
+                    `id_metodo` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `nombre` text NOT NULL,
+                    `comision_porcentaje` real DEFAULT 0 NOT NULL
+                );
+                
+                ALTER TABLE `productos` ADD COLUMN `precio_lista` real DEFAULT 0 NOT NULL;
+                ALTER TABLE `productos` RENAME COLUMN `precio` TO `precio_venta`;
+                
+                ALTER TABLE `ventas` RENAME COLUMN `precio` TO `precio_venta`;
+                ALTER TABLE `ventas` ADD COLUMN `id_operacion` text DEFAULT '' NOT NULL;
+                ALTER TABLE `ventas` ADD COLUMN `metodo_pago` text DEFAULT 'Efectivo' NOT NULL;
+                ALTER TABLE `ventas` ADD COLUMN `comision_porcentaje` real DEFAULT 0 NOT NULL;
+                
+                ALTER TABLE `egresos` ADD COLUMN `categoria` text DEFAULT 'Otros' NOT NULL;
+                ALTER TABLE `egresos` ADD COLUMN `metodo_pago` text DEFAULT 'Efectivo' NOT NULL;
+                ALTER TABLE `egresos` ADD COLUMN `id_proveedor` integer;
+                
+                INSERT OR IGNORE INTO `usuarios` (`id_usuario`, `nombre`, `password`, `rol`) VALUES (1, 'Administrador Central', '1234', 'admin');
+                
+                INSERT OR IGNORE INTO `metodos_pago` (`nombre`, `comision_porcentaje`) VALUES ('Efectivo', 0), ('Tarjeta Débito', 3), ('Tarjeta Crédito', 8), ('QR Mercado Pago', 15);
+            ",
+            kind: MigrationKind::Up,
         }
     ];
 

@@ -179,6 +179,11 @@ export function EditProductModal({ isOpen, onClose, product }: EditProductModalP
                 className="font-mono"
                 value={formData.codigo_barras || ""}
                 onChange={(e) => setFormData({ ...formData, codigo_barras: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                  }
+                }}
               />
             </div>
 

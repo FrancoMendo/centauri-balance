@@ -3,12 +3,14 @@ import { ShoppingCart, Barcode, Banknote, Trash2, Plus, Minus, X } from "lucide-
 import { useSalesStore } from "../store/useSalesStore";
 import { useInventoryStore } from "../store/useInventoryStore";
 import { PriceInput } from "../components/PriceInput";
+import { PriceDisplay } from "../components/ui/PriceDisplay";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { getDb } from "../lib/db";
 import { productos as productosTable } from "../lib/schema";
 import { eq, sql } from "drizzle-orm";
 import { ventas, metodos_pago as pmTable } from "../lib/schema";
+import { logAction } from "../lib/logger";
 
 export function SalesPanel() {
   const { cart, addToCart, removeFromCart, updateQuantity, updatePrice, clearCart, getTotal, getItemCount, searchQuery, setSearchQuery } = useSalesStore();
@@ -20,6 +22,12 @@ export function SalesPanel() {
   const [selectedResultIndex, setSelectedResultIndex] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("Efectivo");
   const [paymentMethodsList, setPaymentMethodsList] = useState<{ nombre: string; comision: number }[]>([]);
+
+  // Referencias para escaneo en segundo plano (Pistola Láser)
+  const bufferRef = useRef("");
+  const lastKeyTimeRef = useRef(0);
+  const lastScannedCodeRef = useRef("");
+  const lastScannedTimeRef = useRef(0);
 
   // Inicializar métodos de pago
   useEffect(() => {
@@ -99,6 +107,58 @@ export function SalesPanel() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Detector Global de Pistola de Código de Barras (funciona sin foco y con anti-rebote temporal)
+  useEffect(() => {
+    const handleGlobalBarcode = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      const timeNow = performance.now();
+      // Un humano teclea a >80ms entre teclas, una pistola manda todo a ~2-15ms
+      if (timeNow - lastKeyTimeRef.current > 50) {
+        bufferRef.current = ""; // Reiniciar buffer si la velocidad es humana
+      }
+      lastKeyTimeRef.current = timeNow;
+
+      if (e.key === "Enter") {
+        const code = bufferRef.current;
+        bufferRef.current = ""; // Siempre limpiar al apretar Enter
+        
+        // Si acumuló lo suficiente rápido, fue una pistola
+        if (code.length >= 3) {
+          // Anti-duplicado por láser (Prevenir el mismo código en menos de 800ms)
+          const dateNow = Date.now();
+          if (lastScannedCodeRef.current === code && (dateNow - lastScannedTimeRef.current < 800)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return; // Bloqueo silencioso del duplicado por rebote
+          }
+          
+          lastScannedCodeRef.current = code;
+          lastScannedTimeRef.current = dateNow;
+
+          // Buscar el producto
+          const product = products.find(p => p.codigo_barras === code);
+          if (product) {
+            e.preventDefault();
+            e.stopPropagation();
+            addToCart(product);
+            
+            // Si el puntero estaba justo dentro de nuestro buscador manualmente, lo limpiamos para que no quede basura textual
+            if (document.activeElement === searchInputRef.current) {
+              setSearchQuery("");
+            }
+          }
+        }
+      } else if (e.key.length === 1) {
+        bufferRef.current += e.key;
+      }
+    };
+
+    // Usamos capture: true para evaluar las teclas antes de que los inputs HTML reaccionen
+    window.addEventListener("keydown", handleGlobalBarcode, { capture: true });
+    return () => window.removeEventListener("keydown", handleGlobalBarcode, { capture: true });
+  }, [products, addToCart, setSearchQuery]);
+
   const handleSearchKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "ArrowDown") {
@@ -157,9 +217,11 @@ export function SalesPanel() {
       clearCart();
       // Refrescar inventario para reflejar el nuevo stock
       await fetchProducts();
+      await logAction(`Venta registrada exitosamente por $${total.toFixed(2)} (${cart.length} ítems, Medio: ${paymentMethod})`);
       alert("✅ Venta registrada con éxito.");
     } catch (error) {
       console.error("Error al procesar la venta:", error);
+      await logAction(`Error intentando registrar venta: ${(error as Error).message}`);
       alert("❌ Error al procesar la venta: " + (error as Error).message);
     } finally {
       setIsProcessing(false);
@@ -267,9 +329,10 @@ export function SalesPanel() {
                       >
                         {product.stock} un.
                       </span>
-                      <span className="font-semibold text-gray-900">
-                        ${product.precio_venta.toFixed(2)}
-                      </span>
+                      <PriceDisplay
+                        amount={product.precio_venta}
+                        className="font-semibold text-gray-900"
+                      />
                     </div>
                   </button>
                 ))}
@@ -370,7 +433,7 @@ export function SalesPanel() {
                           </div>
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-semibold text-gray-900">
-                          ${item.subtotal.toFixed(2)}
+                          <PriceDisplay amount={item.subtotal} />
                         </td>
                         <td className="py-3 px-4 text-right">
                           <button
@@ -417,9 +480,10 @@ export function SalesPanel() {
               <span className="text-gray-500 font-medium tracking-wide uppercase text-sm">
                 Total a cobrar
               </span>
-              <span className="text-4xl font-bold text-gray-900">
-                ${total.toFixed(2)}
-              </span>
+              <PriceDisplay
+                amount={total}
+                className="text-4xl font-bold text-gray-900"
+              />
             </div>
 
             <div className="mb-6 space-y-2">
@@ -446,7 +510,11 @@ export function SalesPanel() {
                 return (
                   <div className="mb-6 bg-red-50 border border-red-100 rounded-lg p-3 flex justify-between items-center text-sm">
                     <span className="text-red-700 font-medium">Comisión retención ({commission}%)</span>
-                    <span className="text-red-600 font-bold">-${lossAmount.toFixed(2)}</span>
+                    <PriceDisplay
+                      amount={-lossAmount}
+                      className="text-red-600 font-bold"
+                      prefix=""
+                    />
                   </div>
                 );
               }

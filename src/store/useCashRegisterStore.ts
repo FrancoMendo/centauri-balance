@@ -3,6 +3,7 @@ import { Egreso, NewEgreso } from "../lib/schema";
 import { getDb } from "../lib/db";
 import { egresos, ventas } from "../lib/schema";
 import { eq, sql } from "drizzle-orm";
+import { logAction } from "../lib/logger";
 
 interface CashRegisterState {
   dateRange: { start: string; end: string };
@@ -82,8 +83,10 @@ export const useCashRegisterStore = create<CashRegisterState>((set, get) => ({
         isLoading: false,
       });
     } catch (error) {
+      const errMessage = (error as Error).message;
       console.error("Error al obtener resumen:", error);
-      set({ error: (error as Error).message, isLoading: false });
+      set({ error: errMessage, isLoading: false });
+      await logAction(`Error al obtener resumen de caja: ${errMessage}`);
     }
   },
 
@@ -113,8 +116,12 @@ export const useCashRegisterStore = create<CashRegisterState>((set, get) => ({
       await get().fetchExpenses();
       await get().fetchTodaySummary();
       set({ isLoading: false });
+      
+      await logAction(`Nuevo egreso registrado: ${newExpense.descripcion} ($${newExpense.monto})`);
     } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+      const errMessage = (error as Error).message;
+      set({ error: errMessage, isLoading: false });
+      await logAction(`Error al registrar egreso: ${errMessage}`);
     }
   },
 
@@ -126,8 +133,12 @@ export const useCashRegisterStore = create<CashRegisterState>((set, get) => ({
       await get().fetchExpenses();
       await get().fetchTodaySummary();
       set({ isLoading: false });
+      
+      await logAction(`Egreso eliminado (ID: ${id})`);
     } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+      const errMessage = (error as Error).message;
+      set({ error: errMessage, isLoading: false });
+      await logAction(`Error al eliminar egreso (ID: ${id}): ${errMessage}`);
     }
   },
 }));

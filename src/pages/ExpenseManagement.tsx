@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Receipt, Coins, Trash2, PlusCircle } from "lucide-react";
+import { Receipt, Plus, Trash2, DollarSign } from "lucide-react";
+import { PriceDisplay } from "../components/ui/PriceDisplay";
+import { PriceInput } from "../components/PriceInput";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { Label } from "../components/ui/Label";
@@ -25,7 +27,7 @@ export function ExpenseManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [descInput, setDescInput] = useState("");
   const [catInput, setCatInput] = useState("Servicios");
-  const [montoInput, setMontoInput] = useState("");
+  const [montoInput, setMontoInput] = useState<number>(0);
   const [metodoPagoInput, setMetodoPagoInput] = useState("Efectivo");
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export function ExpenseManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!descInput.trim() || !montoInput) return;
+    if (!descInput.trim() || montoInput <= 0) return;
 
     setIsSubmitting(true);
     try {
@@ -59,14 +61,14 @@ export function ExpenseManagement() {
       await db.insert(egresos).values({
         descripcion: descInput,
         categoria: catInput,
-        monto: parseFloat(montoInput),
+        monto: montoInput,
         metodo_pago: metodoPagoInput,
         id_usuario: 1, // Usuario por defecto hasta tener módulo auth
       });
 
       // Limpiar formulario
       setDescInput("");
-      setMontoInput("");
+      setMontoInput(0);
       
       alert("✅ Gasto registrado con éxito.");
       await fetchExpenses();
@@ -94,7 +96,7 @@ export function ExpenseManagement() {
       <header className="flex items-center justify-between pb-4 border-b border-gray-200">
         <div>
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-orange-600 flex items-center gap-3">
-            <Coins className="w-8 h-8 text-red-600" />
+            <DollarSign className="w-8 h-8 text-red-600" />
             Gestión de Gastos
           </h1>
           <p className="text-gray-500 mt-1">
@@ -108,19 +110,17 @@ export function ExpenseManagement() {
         {/* Panel Izquierdo: Formulario de Nuevo Gasto */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-fit">
           <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-            <PlusCircle className="w-5 h-5 text-red-500" /> Registrar Nuevo Gasto
+            <Plus className="w-5 h-5 text-red-500" /> Registrar Nuevo Gasto
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label>Monto ($)</Label>
-              <Input 
-                type="number"
-                step="0.01"
+              <PriceInput 
                 required
                 value={montoInput}
-                onChange={(e) => setMontoInput(e.target.value)}
-                placeholder="0.00"
+                onChange={(val) => setMontoInput(val)}
+                className="w-full text-lg"
               />
             </div>
             
@@ -222,8 +222,8 @@ export function ExpenseManagement() {
                       <td className="py-3 px-4 text-gray-500">
                         {expense.metodo_pago}
                       </td>
-                      <td className="py-3 px-4 text-right font-medium text-red-600">
-                        ${expense.monto.toFixed(2)}
+                      <td className="py-4 px-6 text-right font-medium text-red-600 bg-red-50/20 border-l border-red-50">
+                        <PriceDisplay amount={expense.monto} />
                       </td>
                       <td className="py-3 px-4 text-center">
                         <button
