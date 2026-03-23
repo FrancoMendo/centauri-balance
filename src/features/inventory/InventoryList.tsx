@@ -63,6 +63,12 @@ export function InventoryList() {
           e.preventDefault();
           e.stopPropagation();
           setSearchTerm(code);
+
+          // Buscar y si existe, abrir el modal de edición al instante
+          const match = products.find(p => p.codigo_barras === code);
+          if (match) {
+            setProductToEdit(match);
+          }
         }
       } else if (e.key.length === 1) {
         bufferRef.current += e.key;
@@ -71,7 +77,7 @@ export function InventoryList() {
     
     window.addEventListener("keydown", handleGlobalBarcode, { capture: true });
     return () => window.removeEventListener("keydown", handleGlobalBarcode, { capture: true });
-  }, []);
+  }, [products]);
 
   const filteredProducts = useMemo(() => {
     if (!searchTerm.trim()) return products.slice(0, 200); // 200 max rendered to limit DOM freezing
