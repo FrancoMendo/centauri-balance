@@ -10,6 +10,8 @@
     "tauri": "tauri",
     "generate-migration": "drizzle-kit generate",
     "migrate:localhost": "drizzle-kit migrate --config=drizzle.config.ts",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "node seed-localhost.js",
     "build:exe": "tauri build"
   },
   "dependencies": {

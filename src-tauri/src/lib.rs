@@ -116,6 +116,12 @@ pub fn run() {
                 INSERT OR IGNORE INTO `metodos_pago` (`nombre`, `comision_porcentaje`) VALUES ('Efectivo', 0), ('Tarjeta Débito', 3), ('Tarjeta Crédito', 8), ('QR Mercado Pago', 15);
             ",
             kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 9,
+            description: "seed_productos_inicial",
+            sql: include_str!("../../productos.sql"),
+            kind: MigrationKind::Up,
         }
     ];
 
