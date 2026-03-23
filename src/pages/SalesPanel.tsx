@@ -12,6 +12,8 @@ import { eq, sql } from "drizzle-orm";
 import { ventas, metodos_pago as pmTable } from "../lib/schema";
 import { logAction } from "../lib/logger";
 
+const GENERIC_BARCODE = "NO_CODE_GENERIC";
+
 export function SalesPanel() {
   const { cart, addToCart, removeFromCart, updateQuantity, updatePrice, clearCart, getTotal, getItemCount, searchQuery, setSearchQuery } = useSalesStore();
   const { products, fetchProducts } = useInventoryStore();
@@ -52,8 +54,27 @@ export function SalesPanel() {
           comision: m.comision_porcentaje
         })));
         if (methods.length > 0) setPaymentMethod(methods[0].nombre);
+
+        // Asegurarnos de que el "Producto Genérico" exista en la BD para ventas sin código
+        // Evitamos doble-inserción en React StrictMode con un bloque try independiente y asegurándonos que el componente está montado
+        try {
+          const resGenerico = await db.select().from(productosTable).where(eq(productosTable.codigo_barras, GENERIC_BARCODE));
+          if (resGenerico.length === 0) {
+            await db.insert(productosTable).values({
+              nombre: "Productos sin código",
+              categoria: "Varios",
+              precio_lista: 0,
+              precio_venta: 0,
+              stock: 999999, // Stock casi infinito por ser genérico
+              codigo_barras: GENERIC_BARCODE,
+              descripcion: "Venta manual sin código",
+            } as any).onConflictDoNothing(); // Drizzle SQLite previene error si otro hilo ya lo insertó
+          }
+        } catch (e) {
+          // Ignorar posibles choques silenciosos de UNIQUE
+        }
       } catch (error) {
-        console.error("Error al cargar metodos de pago", error);
+        console.error("Error al inicializar Panel de Ventas", error);
       }
     }
     initPM();
@@ -80,20 +101,13 @@ export function SalesPanel() {
         (p.categoria && p.categoria.toLowerCase().includes(query))
     );
 
-    setSearchResults(filtered);
+    // Limitamos la cantidad máxima de resultados mostrados para evitar un colapso en el renderizado del DOM (congelar pagina)
+    // Especialmente crítico cuando hay una base +87.000 de productos y se teclea apenas "1 letra".
+    setSearchResults(filtered.slice(0, 20));
     setShowResults(filtered.length > 0);
     setSelectedResultIndex(0);
 
-    // Si la búsqueda coincide exactamente con un código de barras, agregar directo
-    const exactBarcode = products.find(
-      (p) => p.codigo_barras && p.codigo_barras === query
-    );
-    if (exactBarcode) {
-      addToCart(exactBarcode);
-      setSearchQuery("");
-      setShowResults(false);
-    }
-  }, [searchQuery, products, addToCart, setSearchQuery]);
+  }, [searchQuery, products]);
 
   // Atajo global: Alt+B para enfocar el buscador
   useEffect(() => {
@@ -116,6 +130,14 @@ export function SalesPanel() {
       // Un humano teclea a >80ms entre teclas, una pistola manda todo a ~2-15ms
       if (timeNow - lastKeyTimeRef.current > 50) {
         bufferRef.current = ""; // Reiniciar buffer si la velocidad es humana
+      } else {
+        // Rafaga de pistola detectada (velocidad inhumana). 
+        // Si el foco está en el input, evitamos que estos caracteres se "impriman"
+        // físicamente en React, evitando que parpadee el menú de búsqueda (sometiendo el DOM a estrés).
+        if (document.activeElement === searchInputRef.current) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
       }
       lastKeyTimeRef.current = timeNow;
 
@@ -146,6 +168,8 @@ export function SalesPanel() {
             // Si el puntero estaba justo dentro de nuestro buscador manualmente, lo limpiamos para que no quede basura textual
             if (document.activeElement === searchInputRef.current) {
               setSearchQuery("");
+              setShowResults(false);
+              searchInputRef.current?.blur();
             }
           }
         }
@@ -175,6 +199,7 @@ export function SalesPanel() {
           addToCart(searchResults[selectedResultIndex]);
           setSearchQuery("");
           setShowResults(false);
+          searchInputRef.current?.blur();
         }
       } else if (e.key === "Escape") {
         setShowResults(false);
@@ -195,11 +220,21 @@ export function SalesPanel() {
       const selectedPM = paymentMethodsList.find(m => m.nombre === paymentMethod);
       const commission = selectedPM ? selectedPM.comision : 0;
 
+      // Obtener el ID real del producto genérico si hay items huérfanos (-ID)
+      let realGenericId: number | null = null;
+      const genericRows = await db.select().from(productosTable).where(eq(productosTable.codigo_barras, GENERIC_BARCODE));
+      if (genericRows.length > 0) {
+        realGenericId = genericRows[0].id_producto;
+      }
+
       for (const item of cart) {
-        // Registrar la venta (id_usuario = 1 temporal hasta módulo auth)
+        // Los items sin código (Pan, etc.) usan IDs negativos falsos temporales. Mapearlos al Real Genérico ID para la BD.
+        const dbProductId = item.product.id_producto < 0 ? (realGenericId || 1) : item.product.id_producto;
+
+        // Registrar la venta (id_usuario = 1 temporal)
         await db.insert(ventas).values({
           id_operacion,
-          id_producto: item.product.id_producto,
+          id_producto: dbProductId,
           cantidad: item.quantity,
           precio_venta: item.product.precio_venta,
           metodo_pago: paymentMethod,
@@ -207,15 +242,14 @@ export function SalesPanel() {
           id_usuario: 1,
         });
 
-        // Descontar stock del producto
+        // Descontar stock del producto (incluso si es el genérico, descuenta de infinito)
         await db
           .update(productosTable)
           .set({ stock: sql`${productosTable.stock} - ${item.quantity}` })
-          .where(eq(productosTable.id_producto, item.product.id_producto));
+          .where(eq(productosTable.id_producto, dbProductId));
       }
 
       clearCart();
-      // Refrescar inventario para reflejar el nuevo stock
       await fetchProducts();
       await logAction(`Venta registrada exitosamente por $${total.toFixed(2)} (${cart.length} ítems, Medio: ${paymentMethod})`);
       alert("✅ Venta registrada con éxito.");
@@ -245,6 +279,24 @@ export function SalesPanel() {
     return () => window.removeEventListener("keydown", handleGlobalEnter);
   });
 
+  const handleAddGenericClick = () => {
+    // Creamos un producto al vuelo con ID negativo altamente improbable, para que no colisionen
+    // si el usuario agrega múltiples items genéricos "Pan" y "Queso"
+    const fakeId = -Math.round(performance.now() + Math.random() * 1000);
+    const orphanGeneric = {
+      id_producto: fakeId,
+      nombre: "Productos sin código", 
+      categoria: "Varios",
+      precio_lista: 0,
+      precio_venta: 0,
+      stock: 0,
+      codigo_barras: GENERIC_BARCODE,
+      descripcion: "",
+      id_proveedor: null
+    };
+    addToCart(orphanGeneric as any);
+  };
+
   const total = getTotal();
   const itemCount = getItemCount();
 
@@ -259,16 +311,28 @@ export function SalesPanel() {
             Escanee o busque productos para registrar la venta
           </p>
         </div>
-        {cart.length > 0 && (
-          <Button
-            variant="danger"
-            onClick={clearCart}
-            className="flex items-center gap-2"
+        <div className="flex items-center gap-3">
+          <Button 
+            className="flex items-center gap-2 bg-emerald-100/50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
+            variant="outline"
+            onClick={handleAddGenericClick}
+            title="Añadir ítem manual como Pan, Fiambre, etc."
           >
-            <X className="w-4 h-4" />
-            Vaciar Carrito
+            <Plus className="w-5 h-5" />
+            Sin Código
           </Button>
-        )}
+
+          {cart.length > 0 && (
+            <Button
+              variant="danger"
+              onClick={clearCart}
+              className="flex items-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              Vaciar
+            </Button>
+          )}
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -428,7 +492,8 @@ export function SalesPanel() {
                             <PriceInput
                               value={item.product.precio_venta}
                               onChange={(val) => updatePrice(item.product.id_producto, val)}
-                              className="text-right py-1 px-2 text-sm font-semibold text-gray-700 bg-gray-50 hover:bg-white w-full border-gray-200"
+                              className={`text-right py-1 px-2 text-sm font-semibold text-gray-700 hover:bg-white w-full ${item.product.id_producto < 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}
+                              placeholder={item.product.id_producto < 0 ? 'Monto manual' : undefined}
                             />
                           </div>
                         </td>
