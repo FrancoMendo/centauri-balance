@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useInventoryStore } from "../../store/useInventoryStore";
-import { Package, Plus, Edit2, Search } from "lucide-react";
+import { Package, Plus, Edit2, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "../../components/ui/Input";
 import { AddProductModal } from "./AddProductModal";
 import { EditProductModal } from "./EditProductModal";
@@ -12,7 +12,9 @@ export function InventoryList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Producto | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
+
   // Variables de escaner de código de barras global
   const bufferRef = useRef("");
   const lastKeyTimeRef = useRef(0);
@@ -45,17 +47,17 @@ export function InventoryList() {
 
       if (e.key === "Enter") {
         const code = bufferRef.current;
-        bufferRef.current = ""; 
-        
+        bufferRef.current = "";
+
         if (code.length >= 3) {
           // Anti-duplicado por láser de metralleta
           const dateNow = Date.now();
           if (lastScannedCodeRef.current === code && (dateNow - lastScannedTimeRef.current < 800)) {
             e.preventDefault();
             e.stopPropagation();
-            return; 
+            return;
           }
-          
+
           lastScannedCodeRef.current = code;
           lastScannedTimeRef.current = dateNow;
 
@@ -74,23 +76,35 @@ export function InventoryList() {
         bufferRef.current += e.key;
       }
     };
-    
+
     window.addEventListener("keydown", handleGlobalBarcode, { capture: true });
     return () => window.removeEventListener("keydown", handleGlobalBarcode, { capture: true });
   }, [products]);
 
-  const filteredProducts = useMemo(() => {
-    if (!searchTerm.trim()) return products.slice(0, 200); // 200 max rendered to limit DOM freezing
-    
+  const baseFilteredProducts = useMemo(() => {
+    if (!searchTerm.trim()) return products;
+
     const term = searchTerm.toLowerCase().trim();
     return products.filter(
-      (p) => 
-        p.nombre.toLowerCase().includes(term) || 
+      (p) =>
+        p.nombre.toLowerCase().includes(term) ||
         (p.codigo_barras && p.codigo_barras.toLowerCase().includes(term)) ||
         p.id_producto.toString() === term ||
         (p.categoria && p.categoria.toLowerCase().includes(term))
-    ).slice(0, 100);
+    );
   }, [products, searchTerm]);
+
+  const totalPages = Math.ceil(baseFilteredProducts.length / ITEMS_PER_PAGE);
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return baseFilteredProducts.slice(start, start + ITEMS_PER_PAGE);
+  }, [baseFilteredProducts, currentPage]);
+
+  // Reiniciar la página al escribir
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-100">
@@ -122,7 +136,7 @@ export function InventoryList() {
           </div>
         </div>
       </div>
-      
+
       {/* Mobile search bar */}
       <div className="sm:hidden relative w-full mb-6">
         <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -153,14 +167,14 @@ export function InventoryList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredProducts.length === 0 ? (
+              {paginatedProducts.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-gray-500">
                     {searchTerm ? "No se encontraron productos con esa búsqueda." : "No hay productos en el inventario."}
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((p) => (
+                paginatedProducts.map((p) => (
                   <tr key={p.id_producto} className="hover:bg-gray-50/50 transition-colors">
                     <td className="py-3 px-4 text-gray-800">{p.id_producto}</td>
                     <td className="py-3 px-4 text-gray-800 font-medium">{p.nombre}</td>
@@ -173,13 +187,13 @@ export function InventoryList() {
                       </span>
                     </td>
                     <td className="py-3 px-4 flex items-center justify-end gap-2">
-                       <button 
-                         onClick={() => setProductToEdit(p)}
-                         title="Editar"
-                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                       >
-                         <Edit2 className="w-4 h-4" />
-                       </button>
+                      <button
+                        onClick={() => setProductToEdit(p)}
+                        title="Editar"
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -188,13 +202,64 @@ export function InventoryList() {
           </table>
         </div>
       )}
-      
-      
+
+      {/* Paginación UI */}
+      {!isLoading && !error && totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 mt-4 bg-white rounded-b-lg">
+          <div className="flex flex-1 justify-between sm:hidden">
+            <Button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              variant="outline"
+            >
+              Anterior
+            </Button>
+            <Button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              variant="outline"
+            >
+              Siguiente
+            </Button>
+          </div>
+          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Mostrando <span className="font-medium">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> a <span className="font-medium">{Math.min(currentPage * ITEMS_PER_PAGE, baseFilteredProducts.length)}</span> de <span className="font-medium">{baseFilteredProducts.length}</span> resultados
+              </p>
+            </div>
+            <div>
+              <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors focus:z-20 focus:outline-offset-0"
+                >
+                  <span className="sr-only">Anterior</span>
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </button>
+                <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:z-20 focus:outline-offset-0">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors focus:z-20 focus:outline-offset-0"
+                >
+                  <span className="sr-only">Siguiente</span>
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AddProductModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-      <EditProductModal 
-        isOpen={!!productToEdit} 
-        onClose={() => setProductToEdit(null)} 
-        product={productToEdit} 
+      <EditProductModal
+        isOpen={!!productToEdit}
+        onClose={() => setProductToEdit(null)}
+        product={productToEdit}
       />
     </div>
   );
