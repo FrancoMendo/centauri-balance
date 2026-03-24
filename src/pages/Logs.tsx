@@ -6,8 +6,7 @@ import Pagination from "../components/ui/Pagination";
 
 export default function Logs() {
   const { logs, isLoading, error, getLogs, totalCountLogs } = useLogsStore();
-  const ITEMS_PER_PAGE = 5;
-  const totalPages = Math.ceil(totalCountLogs / ITEMS_PER_PAGE);
+  const ITEMS_PER_PAGE = 10;
   const [currentPage, setCurrentPage] = useState(1);
 
   const getInitialData = () => {
@@ -19,10 +18,9 @@ export default function Logs() {
   }, [currentPage]);
 
   useEffect(() => {
-    console.log('totalPages:', totalPages)
     console.log('totalCountLogs:', totalCountLogs)
     console.log('currentPage:', currentPage)
-  }, [totalPages, totalCountLogs, currentPage])
+  }, [totalCountLogs, currentPage])
 
 
   return (
