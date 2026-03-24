@@ -12,11 +12,11 @@ class DatabaseClient {
     if (!this.dbInstance) {
       try {
         let tauriDb: Database | null = null;
-        
+
         if (isTauri) {
           // Inicializa el archivo SQLite nativo vía Tauri solo si estamos en App Nativa
           const isDev = import.meta.env.DEV;
-          
+
           if (isDev) {
             // Durante el desarrollo local, usamos una ruta absoluta hacia el proyecto 
             // para que puedas abrir el archivo .db con cualquier visor de SQLite (ej. DBeaver o extensiones de VSCode)
@@ -78,7 +78,7 @@ class DatabaseClient {
           },
           { schema }
         );
-        
+
         if (isTauri) {
           console.log("DatabaseClient: Base de datos Tauri + Drizzle inicializada correctamente.");
         }

@@ -1,7 +1,7 @@
-import { ShoppingCart, PackageSearch, Wallet, Orbit, History, Coins, CreditCard } from "lucide-react";
+import { ShoppingCart, PackageSearch, Wallet, Orbit, History, Coins, CreditCard, LucidePaperclip } from "lucide-react";
 import clsx from "clsx";
 
-export type PageView = "sales" | "sales_history" | "inventory" | "cash_register" | "expense_management" | "payment_methods";
+export type PageView = "sales" | "sales_history" | "inventory" | "cash_register" | "expense_management" | "payment_methods" | "logs";
 
 interface SidebarProps {
   currentPage: PageView;
@@ -46,6 +46,12 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
       icon: <CreditCard className="w-5 h-5" />,
       shortcut: "Alt+6",
     },
+    {
+      id: "logs",
+      label: "Logs",
+      icon: <LucidePaperclip className="w-5 h-5" />,
+      shortcut: "Alt+7",
+    },
   ];
 
   return (
@@ -70,8 +76,8 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
             onClick={() => setCurrentPage(item.id)}
             className={clsx(
               "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 outline-none",
-              currentPage === item.id 
-                ? "bg-blue-600/10 text-blue-400 font-semibold" 
+              currentPage === item.id
+                ? "bg-blue-600/10 text-blue-400 font-semibold"
                 : "hover:bg-gray-800 hover:text-white"
             )}
             title={`${item.label} (${item.shortcut})`}

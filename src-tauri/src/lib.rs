@@ -117,6 +117,12 @@ pub fn run() {
             description: "seed_productos_inicial",
             sql: include_str!("../../productos.sql"),
             kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 10,
+            description: "seed_usuarios_inicial",
+            sql: "INSERT OR IGNORE INTO usuarios (id_usuario, nombre, password, rol) VALUES (1, 'Administrador Central', '1234', 'admin');",
+            kind: MigrationKind::Up,
         }
     ];
 

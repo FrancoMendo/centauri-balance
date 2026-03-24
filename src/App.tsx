@@ -8,6 +8,7 @@ import { ExpenseManagement } from "./pages/ExpenseManagement";
 import { PaymentMethodsManagement } from "./pages/PaymentMethodsManagement";
 import { InventoryManagement } from "./pages/InventoryManagement";
 import { CashRegisterClose } from "./pages/CashRegisterClose";
+import Logs from "./pages/Logs";
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageView>("sales");
@@ -41,7 +42,7 @@ function App() {
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
       <Toaster position="top-right" richColors closeButton />
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-      
+
       {/* Contenido principal - con margin left para la sidebar fija */}
       <main className="flex-1 ml-64 p-8 min-w-0 flex justify-center">
         <div className="w-[90%] 2xl:w-[85%] max-w-[1600px]">
@@ -51,6 +52,7 @@ function App() {
           {currentPage === "cash_register" && <CashRegisterClose />}
           {currentPage === "expense_management" && <ExpenseManagement />}
           {currentPage === "payment_methods" && <PaymentMethodsManagement />}
+          {currentPage === "logs" && <Logs />}
         </div>
       </main>
     </div>
