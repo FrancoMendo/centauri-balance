@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1773979621316,
-      "tag": "0000_polite_kid_colt",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1774120451235,
-      "tag": "0001_worried_master_chief",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1774120719057,
-      "tag": "0002_nebulous_squadron_sinister",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1774123914320,
-      "tag": "0003_sleepy_daredevil",
+      "when": 1774244925886,
+      "tag": "0000_zippy_freak",
       "breakpoints": true
     }
   ]

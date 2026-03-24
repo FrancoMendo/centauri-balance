@@ -87,6 +87,10 @@ Generar resumen de "Cierre de caja" del dia
 App con sincronizacion de datos con un servidor
 
 
+Futuras implementaciones:
+- feature provedores (AMB), asignación de productos a proveedores
+- feature usuarios (AMB), asignación de roles
+
 -----------------------------------------------------------
 SEGUIMIENTO Y PLAN DE EJECUCIÓN (Hacia la v1.0)
 -----------------------------------------------------------
@@ -122,6 +126,9 @@ FASE 5: Compilación y Producción (COMPLETADA)
 [x] 3. Compilar instalador ejecutable (`.exe`) de prueba.
 
 FASE 6: Historial de Ventas y Gestión de Gastos
-[ ] 1. Base de Datos: Añadir campo "metodo_pago" a `ventas`. Añadir soporte para categoría/proveedor en `egresos` (ej. servicios luz/agua/internet).
-[ ] 2. Página "Historial de Ventas": Lista con todas las ventas, indicando: horario, total, método de pago y opción de ver detalles.
-[ ] 3. Página "Gestión de Gastos": Interfaz para administrar, visualizar y categorizar egresos, proveedores y facturas de servicios.
+[x] 1. Base de Datos: Añadir campo "metodo_pago" a `ventas`. Añadir soporte para categoría/proveedor en `egresos` (ej. servicios luz/agua/internet).
+[x] 2. Página "Historial de Ventas": Lista con todas las ventas, indicando: horario, total, método de pago y opción de ver detalles.
+[x] 3. Página "Gestión de Gastos": Interfaz para administrar, visualizar y categorizar egresos, proveedores y facturas de servicios.
+
+En botón reusable, adicionar icono de enter para sugerir atajos de teclado en el modal
+Usar botón con el nuevo icono en Modals

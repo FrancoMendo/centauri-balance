@@ -1,0 +1,3 @@
+
+Falta cargar automáticamente usuarios
+INSERT OR IGNORE INTO usuarios (id_usuario, nombre, password, rol) VALUES (1, 'Administrador Central', '1234', 'admin');
