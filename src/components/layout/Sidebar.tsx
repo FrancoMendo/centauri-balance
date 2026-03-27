@@ -1,9 +1,20 @@
-import { ShoppingCart, PackageSearch, Wallet, Orbit, History, Coins, CreditCard, LucidePaperclip, LogOut } from "lucide-react";
+import {
+  ShoppingCart,
+  PackageSearch,
+  Wallet,
+  Orbit,
+  History,
+  Coins,
+  CreditCard,
+  LucidePaperclip,
+  LogOut,
+  Layers
+} from "lucide-react";
 import clsx from "clsx";
 import { Button } from "../ui/Button";
 import { useUserStore } from "../../store/userStore";
 
-export type PageView = "sales" | "sales_history" | "inventory" | "cash_register" | "expense_management" | "payment_methods" | "logs";
+export type PageView = "sales" | "sales_history" | "inventory" | "cash_register" | "expense_management" | "payment_methods" | "logs" | "bulk_edit";
 
 interface SidebarProps {
   currentPage: PageView;
@@ -36,28 +47,34 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
       shortcut: "Alt+3",
     },
     {
+      id: "bulk_edit",
+      label: "Edición Múltiple",
+      icon: <Layers className="w-5 h-5" />,
+      shortcut: "Alt+4",
+    },
+    {
       id: "cash_register",
       label: "Cierre de Caja",
       icon: <Wallet className="w-5 h-5" />,
-      shortcut: "Alt+4",
+      shortcut: "Alt+5",
     },
     {
       id: "expense_management",
       label: "Gestión de Gastos",
       icon: <Coins className="w-5 h-5" />,
-      shortcut: "Alt+5",
+      shortcut: "Alt+6",
     },
     {
       id: "payment_methods",
       label: "Métodos de Pago",
       icon: <CreditCard className="w-5 h-5" />,
-      shortcut: "Alt+6",
+      shortcut: "Alt+7",
     },
     {
       id: "logs",
       label: "Logs",
       icon: <LucidePaperclip className="w-5 h-5" />,
-      shortcut: "Alt+7",
+      shortcut: "Alt+8",
     },
   ];
 

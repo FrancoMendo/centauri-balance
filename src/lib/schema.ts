@@ -84,3 +84,12 @@ export const logs = sqliteTable("logs", {
 
 export type Log = typeof logs.$inferSelect;
 export type NewLog = typeof logs.$inferInsert;
+
+export const grupos_productos = sqliteTable("grupos_productos", {
+  id_grupo: integer("id_grupo").primaryKey({ autoIncrement: true }),
+  nombre: text("nombre").notNull(),
+  ids_productos: text("ids_productos").notNull(), // Almacenaremos un JSON array stringified
+});
+
+export type GrupoProducto = typeof grupos_productos.$inferSelect;
+export type NewGrupoProducto = typeof grupos_productos.$inferInsert;

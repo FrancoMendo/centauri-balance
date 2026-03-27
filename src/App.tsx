@@ -8,6 +8,7 @@ import { ExpenseManagement } from "./pages/ExpenseManagement";
 import { PaymentMethodsManagement } from "./pages/PaymentMethodsManagement";
 import { InventoryManagement } from "./pages/InventoryManagement";
 import { CashRegisterClose } from "./pages/CashRegisterClose";
+import { EdicionMultiple } from "./pages/EdicionMultiple";
 import Logs from "./pages/Logs";
 import { useUserStore } from "./store/userStore";
 import Login from "./pages/Login";
@@ -27,6 +28,8 @@ function App() {
       "4": "cash_register",
       "5": "expense_management",
       "6": "payment_methods",
+      "7": "logs",
+      "8": "bulk_edit",
     };
 
     const targetPage = pageMap[e.key];
@@ -60,6 +63,7 @@ function App() {
               {currentPage === "expense_management" && <ExpenseManagement />}
               {currentPage === "payment_methods" && <PaymentMethodsManagement />}
               {currentPage === "logs" && <Logs />}
+              {currentPage === "bulk_edit" && <EdicionMultiple />}
             </div>
           </main>
         </>
