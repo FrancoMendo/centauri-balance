@@ -1,4 +1,5 @@
 import React from "react";
+import { cn } from "../../lib/utils";
 
 interface Props {
   children: React.ReactNode;
@@ -8,8 +9,11 @@ interface Props {
 
 export default function Card({ children, className, onClick }: Props) {
   return (
-    <div className={`${className || "bg-white rounded-lg shadow-sm border border-gray-200 p-4 "}`} onClick={onClick}>
+    <div 
+      className={cn("bg-neutral-900 rounded-3xl border border-white/5 p-6 shadow-xl", className)} 
+      onClick={onClick}
+    >
       {children}
     </div>
   );
-}
+}
