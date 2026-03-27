@@ -25,7 +25,7 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
   const { logout, currentUser } = useUserStore();
 
   const isAdmin = currentUser?.rol === "admin";
-  const pagesOperador: PageView[] = ["sales", "sales_history", "inventory", "payment_methods"];
+  const pagesOperador: PageView[] = ["sales", "sales_history", "inventory", "bulk_edit", "payment_methods"];
 
   const menuItems: { id: PageView; label: string; icon: React.ReactNode; shortcut: string }[] = [
     {
