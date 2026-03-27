@@ -151,7 +151,25 @@ pub fn run() {
             description: "seed_usuarios_inicial",
             sql: "INSERT OR IGNORE INTO usuarios (id_usuario, nombre, password, rol) VALUES (1, 'admin', '1234', 'admin'), (2, 'operador', '123', 'user');",
             kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 12,
+            description: "create_parametros",
+            sql: "CREATE TABLE `parametros` (
+                `id_parametro` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `key` text NOT NULL,
+                `value` text NOT NULL,
+                `date` text DEFAULT (CURRENT_DATE) NOT NULL
+            );",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 13,
+            description: "create_index_parametros",
+            sql: "CREATE UNIQUE INDEX `parametros_key_unique` ON `parametros` (`key`);",
+            kind: MigrationKind::Up,
         }
+
     ];
 
     tauri::Builder::default()

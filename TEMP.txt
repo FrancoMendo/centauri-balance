@@ -15,3 +15,8 @@ UPDATE productos SET precio_venta = precio_venta * 1.10 WHERE id_proveedor = 1;
 
 - Productos asociados a una categoría
 UPDATE productos SET precio_venta = precio_venta * 1.10 WHERE categoria = 'Alimentos';
+
+------------------
+
+INSERT PRODUCTOS
+INSERT LICENCE

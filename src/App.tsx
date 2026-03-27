@@ -13,12 +13,17 @@ import { EdicionMultiple } from "./pages/EdicionMultiple";
 import Logs from "./pages/Logs";
 import { useUserStore } from "./store/userStore";
 import Login from "./pages/Login";
+import { useLicense } from "./hooks/useLicense";
+import { ActivationRequired } from "./pages/ActivationRequired";
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageView>("sales");
   const { currentUser } = useUserStore();
+  const { status, expirationDate } = useLicense();
+  const [isGraceBypassed, setIsGraceBypassed] = useState(false);
 
   // Atajos de teclado globales para navegación entre páginas
+
 
   const handleGlobalKeyDown = useCallback((e: KeyboardEvent) => {
     if (!e.altKey || !currentUser) return;
@@ -48,12 +53,25 @@ function App() {
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans overflow-hidden">
-      {!currentUser ? (
+      {status === "loading" ? (
+        <div className="flex h-screen w-full items-center justify-center bg-neutral-950">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary-500 border-t-transparent" />
+        </div>
+      ) : status === "blocked" ? (
+        <ActivationRequired expirationDate={expirationDate} isGracePeriod={false} />
+      ) : status === "expired_grace" && !isGraceBypassed ? (
+        <ActivationRequired 
+          expirationDate={expirationDate} 
+          isGracePeriod={true} 
+          onContinue={() => setIsGraceBypassed(true)} 
+        />
+      ) : !currentUser ? (
         <Login />
       ) : (
         <>
           <Toaster position="top-right" richColors closeButton />
           <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+
 
           {/* Contenido principal - con margin left para la sidebar fija */}
           <main className="flex-1 ml-64 p-8 min-w-0 flex justify-center animate-in fade-in duration-500 overflow-y-auto">

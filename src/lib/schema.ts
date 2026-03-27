@@ -93,3 +93,14 @@ export const grupos_productos = sqliteTable("grupos_productos", {
 
 export type GrupoProducto = typeof grupos_productos.$inferSelect;
 export type NewGrupoProducto = typeof grupos_productos.$inferInsert;
+
+export const parametros = sqliteTable("parametros", {
+  id_parametro: integer("id_parametro").primaryKey({ autoIncrement: true }),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  date: text("date").notNull().default(sql`(CURRENT_DATE)`), 
+});
+
+export type Parametro = typeof parametros.$inferSelect;
+export type NewParametro = typeof parametros.$inferInsert;
+
