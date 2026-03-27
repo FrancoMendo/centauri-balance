@@ -121,7 +121,7 @@ pub fn run() {
         Migration {
             version: 10,
             description: "seed_usuarios_inicial",
-            sql: "INSERT OR IGNORE INTO usuarios (id_usuario, nombre, password, rol) VALUES (1, 'admin', '1234', 'admin'), (2, 'operador', '', 'user');",
+            sql: "INSERT OR IGNORE INTO usuarios (id_usuario, nombre, password, rol) VALUES (1, 'admin', '1234', 'admin'), (2, 'operador', '123', 'user');",
             kind: MigrationKind::Up,
         }
     ];

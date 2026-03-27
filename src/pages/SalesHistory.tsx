@@ -3,7 +3,10 @@ import { History, CalendarClock, ChevronDown, ChevronUp, Receipt } from "lucide-
 import { PriceDisplay } from "../components/ui/PriceDisplay";
 import { getDb } from "../lib/db";
 import { ventas, productos as productosTable } from "../lib/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, inArray } from "drizzle-orm";
+import { Input } from "../components/ui/Input";
+import { Label } from "../components/ui/Label";
+import Pagination from "../components/ui/Pagination";
 
 interface SaleOperation {
   id_operacion: string;
@@ -24,62 +27,112 @@ export function SalesHistory() {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedOp, setExpandedOp] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
+  // Estados de Filtros y Paginación
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    d.setHours(0, 0, 0, 0);
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalOperations, setTotalOperations] = useState(0);
+  const pageSize = 10;
 
-  const fetchHistory = async () => {
+  useEffect(() => {
+    fetchHistory(currentPage);
+  }, [currentPage]);
+
+  const handleSearch = () => {
+    if (currentPage === 1) {
+      fetchHistory(1);
+    } else {
+      setCurrentPage(1);
+    }
+  };
+
+  const fetchHistory = async (page: number = 1) => {
     setIsLoading(true);
     try {
       const db = await getDb();
-      // Obtener todas las ventas uniéndolas con productos para tener el nombre
-      const allVentas = await db
-        .select({
+      
+      const whereClause = and(
+        startDate ? gte(ventas.fecha, `${startDate.replace("T", " ")}:00`) : undefined,
+        endDate ? lte(ventas.fecha, `${endDate.replace("T", " ")}:59`) : undefined
+      );
+
+      // 1. Obtener el conteo total de operaciones únicas en el rango
+      const totalRes = await db
+        .select({ 
+          count: sql<number>`count(distinct ${ventas.id_operacion})` 
+        })
+        .from(ventas)
+        .where(whereClause);
+      
+      const count = totalRes[0]?.count || 0;
+      setTotalOperations(count);
+
+      // 2. Obtener los IDs de operación y metadatos para la página actual
+      const opsOnPage = await db
+        .select({ 
           id_operacion: ventas.id_operacion,
           fecha: ventas.fecha,
           metodo_pago: ventas.metodo_pago,
           comision_porcentaje: ventas.comision_porcentaje,
+        })
+        .from(ventas)
+        .where(whereClause)
+        .groupBy(ventas.id_operacion)
+        .orderBy(desc(ventas.fecha))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+      if (opsOnPage.length === 0) {
+        setOperations([]);
+        return;
+      }
+
+      const opIds = opsOnPage.map((o: any) => o.id_operacion).filter((id: any) => id !== null) as string[];
+
+      // 3. Obtener todos los items para estas operaciones específicas
+      const allItems = await db
+        .select({
+          id_operacion: ventas.id_operacion,
           cantidad: ventas.cantidad,
           precio_venta: ventas.precio_venta,
           nombre_producto: productosTable.nombre,
         })
         .from(ventas)
         .leftJoin(productosTable, eq(ventas.id_producto, productosTable.id_producto))
-        .orderBy(desc(ventas.id_venta));
+        .where(inArray(ventas.id_operacion, opIds));
 
-      // Agrupar por id_operacion
-      type QueryResult = typeof allVentas[0];
-      const grouped = allVentas.reduce((acc: Record<string, SaleOperation>, row: QueryResult) => {
-        const id_op = row.id_operacion || "Sin ID";
-        if (!acc[id_op]) {
-          acc[id_op] = {
-            id_operacion: id_op,
-            fecha: row.fecha || new Date().toISOString(),
-            metodo_pago: row.metodo_pago,
-            comision_porcentaje: row.comision_porcentaje,
-            total: 0,
-            items: [],
-          };
-        }
+      // 4. Ensamblar los datos agrupados
+      const assembledOperations = opsOnPage.map((op: any) => {
+        const opItems = allItems.filter((item: any) => item.id_operacion === op.id_operacion);
+        const total = opItems.reduce((sum: number, item: any) => sum + (item.cantidad * item.precio_venta), 0);
+        
+        return {
+          id_operacion: op.id_operacion,
+          fecha: op.fecha || new Date().toISOString(),
+          metodo_pago: op.metodo_pago,
+          comision_porcentaje: op.comision_porcentaje,
+          total,
+          items: opItems.map((i: any) => ({
+            nombre_producto: i.nombre_producto || "Producto Desconocido",
+            cantidad: i.cantidad,
+            precio_venta: i.precio_venta,
+            subtotal: i.cantidad * i.precio_venta
+          }))
+        };
+      });
 
-        const subtotal = row.cantidad * row.precio_venta;
-        acc[id_op].total += subtotal;
-        acc[id_op].items.push({
-          nombre_producto: row.nombre_producto || "Producto Desconocido",
-          cantidad: row.cantidad,
-          precio_venta: row.precio_venta,
-          subtotal: subtotal,
-        });
-
-        return acc;
-      }, {} as Record<string, SaleOperation>);
-
-      // Convertir a array y ordenar por fecha descendente
-      const sortedOperations = (Object.values(grouped) as SaleOperation[]).sort((a: SaleOperation, b: SaleOperation) => 
-        new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-      );
-
-      setOperations(sortedOperations);
+      setOperations(assembledOperations as SaleOperation[]);
     } catch (error) {
       console.error("Error al cargar el historial:", error);
     } finally {
@@ -95,7 +148,7 @@ export function SalesHistory() {
     <div className="space-y-6 animate-in fade-in duration-300">
       <header className="flex items-center justify-between pb-4 border-b border-gray-200">
         <div>
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center gap-3">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-blue-600 to-indigo-600 flex items-center gap-3">
             <History className="w-8 h-8 text-blue-600" />
             Historial de Ventas
           </h1>
@@ -103,12 +156,34 @@ export function SalesHistory() {
             Visualice y analice todas las ventas registradas
           </p>
         </div>
-        <button
-          onClick={fetchHistory}
-          className="px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm transition-colors text-sm font-medium"
-        >
-          Actualizar Historial
-        </button>
+        <div className="flex items-end gap-3">
+          <div className="flex flex-col">
+            <Label htmlFor="start-date">Desde</Label>
+            <Input
+              id="start-date"
+              type="datetime-local"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-56"
+            />
+          </div>
+          <div className="flex flex-col">
+            <Label htmlFor="end-date">Hasta</Label>
+            <Input
+              id="end-date"
+              type="datetime-local"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-56"
+            />
+          </div>
+          <button
+            onClick={handleSearch}
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors text-sm font-medium h-[45px]"
+          >
+            Filtrar
+          </button>
+        </div>
       </header>
 
       {isLoading ? (
@@ -212,6 +287,15 @@ export function SalesHistory() {
             </table>
           </div>
         </div>
+      )}
+      
+      {!isLoading && operations.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalCount={totalOperations}
+          ITEMS_PER_PAGE={pageSize}
+          onPageChange={setCurrentPage}
+        />
       )}
     </div>
   );
