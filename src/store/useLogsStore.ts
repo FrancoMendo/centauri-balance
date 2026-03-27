@@ -2,9 +2,8 @@ import { create } from "zustand";
 import { Log } from "../lib/schema";
 import { getDb } from "../lib/db";
 import { logs } from "../lib/schema";
-import * as schema from "../lib/schema";
 import { count, desc } from "drizzle-orm";
-import { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import { Database } from "./types";
 
 interface LogsState {
   logs: Log[];
@@ -24,7 +23,7 @@ export const useLogsStore = create<LogsState>((set, get) => ({
   getLogs: async (limit: number = 20, offset: number = 0) => {
     set({ isLoading: true, error: null });
     try {
-      const db: DrizzleSqliteDODatabase<typeof schema> = await getDb();
+      const db: Database = await getDb();
       const allLogs = await db.select().from(logs).orderBy(desc(logs.fecha)).limit(limit).offset(offset);
       const countLogs = await db.select({ count: count(logs.id_log) }).from(logs);
       set({ logs: allLogs as Log[], totalCountLogs: Number(countLogs[0].count), isLoading: false });

@@ -1,3 +1,17 @@
 
 Falta cargar automáticamente usuarios
 INSERT OR IGNORE INTO usuarios (id_usuario, nombre, password, rol) VALUES (1, 'Administrador Central', '1234', 'admin');
+
+Tipos de usuarios
+- Administrador
+- Usuario
+
+Edición de precios múltiples productos (precio_venta es el nuevo precio_lista y cambia el porcentaje de ganancia)
+- Productos asociados a un proveedor 
+- Grupos custom con nombre
+
+
+UPDATE productos SET precio_venta = precio_venta * 1.10 WHERE id_proveedor = 1;
+
+- Productos asociados a una categoría
+UPDATE productos SET precio_venta = precio_venta * 1.10 WHERE categoria = 'Alimentos';

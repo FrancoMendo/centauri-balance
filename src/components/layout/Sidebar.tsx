@@ -1,5 +1,7 @@
-import { ShoppingCart, PackageSearch, Wallet, Orbit, History, Coins, CreditCard, LucidePaperclip } from "lucide-react";
+import { ShoppingCart, PackageSearch, Wallet, Orbit, History, Coins, CreditCard, LucidePaperclip, LogOut } from "lucide-react";
 import clsx from "clsx";
+import { Button } from "../ui/Button";
+import { useUserStore } from "../../store/userStore";
 
 export type PageView = "sales" | "sales_history" | "inventory" | "cash_register" | "expense_management" | "payment_methods" | "logs";
 
@@ -9,6 +11,11 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
+  const { logout, currentUser } = useUserStore();
+
+  const isAdmin = currentUser?.rol === "admin";
+  const pagesOperador: PageView[] = ["sales", "sales_history", "inventory", "payment_methods"];
+
   const menuItems: { id: PageView; label: string; icon: React.ReactNode; shortcut: string }[] = [
     {
       id: "sales",
@@ -54,6 +61,8 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
     },
   ];
 
+  const menuItemsFiltered = isAdmin ? menuItems : menuItems.filter((item) => pagesOperador.includes(item.id));
+
   return (
     <aside className="w-64 bg-gray-900 text-gray-300 min-h-screen flex flex-col fixed left-0 top-0">
       <div className="p-6 border-b border-gray-800 flex items-start gap-4">
@@ -70,7 +79,7 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
       </div>
 
       <nav className="flex-1 py-6 px-4 space-y-2">
-        {menuItems.map((item) => (
+        {menuItemsFiltered.map((item) => (
           <button
             key={item.id}
             onClick={() => setCurrentPage(item.id)}
@@ -97,7 +106,10 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
       </nav>
 
       <div className="p-4 border-t border-gray-800 flex justify-center text-xs text-gray-600">
-        &copy; {new Date().getFullYear()} Centauri Software
+        <Button onClick={logout}>
+          <LogOut className="w-5 h-5" />
+          Cerrar Sesión
+        </Button>
       </div>
     </aside>
   );

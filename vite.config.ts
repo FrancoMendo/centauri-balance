@@ -4,7 +4,6 @@ import tailwindcss from "@tailwindcss/vite";
 import Database from "better-sqlite3";
 import path from "node:path";
 
-// @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 function sqliteDevPlugin(): Plugin {
@@ -34,7 +33,7 @@ function sqliteDevPlugin(): Plugin {
                 return;
               }
               const { query, params, method } = JSON.parse(body);
-              
+
               if (method === 'run') {
                 const stmt = db.prepare(query);
                 stmt.run(...params);
@@ -43,19 +42,19 @@ function sqliteDevPlugin(): Plugin {
               } else if (method === 'all' || method === 'values' || method === 'get') {
                 const stmt = db.prepare(query);
                 const rawRows = stmt.all(...params);
-                
+
                 // drizzle-orm/sqlite-proxy espera rows como arrays de valores, no como objetos
                 // Ej: [[1, "Coca", "Bebida", 100, 10, ...], [2, ...]]
                 const rows = rawRows.map((r: any) => Object.values(r));
-                
+
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({ rows: method === 'get' ? rows.slice(0, 1) : rows }));
               }
             } catch (err: any) {
-               console.error("SQL Error en Servidor DEV Vite:", err);
-               res.statusCode = 500;
-               res.setHeader('Content-Type', 'application/json');
-               res.end(JSON.stringify({ error: err.message }));
+              console.error("SQL Error en Servidor DEV Vite:", err);
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: err.message }));
             }
           });
         } else {
@@ -81,10 +80,10 @@ export default defineConfig(async () => ({
     host: host || false,
     hmr: host
       ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-        }
+        protocol: "ws",
+        host,
+        port: 1421,
+      }
       : undefined,
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
