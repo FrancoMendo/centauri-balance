@@ -101,6 +101,7 @@ export default function Login() {
                     <Input
                       type="password"
                       variant="dark"
+                      icon={<KeyRound />}
                       value={password}
                       onChange={(e) => { clearError(); setPassword(e.target.value) }}
                       placeholder="Contraseña Maestra"
