@@ -1,0 +1,515 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "4454f3f2-e9e7-4168-b45d-9f40399bd8cd",
+  "prevId": "703ac735-150f-484c-bf1d-c70efdb75da7",
+  "tables": {
+    "egresos": {
+      "name": "egresos",
+      "columns": {
+        "id_egreso": {
+          "name": "id_egreso",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "categoria": {
+          "name": "categoria",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'Otros'"
+        },
+        "monto": {
+          "name": "monto",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "metodo_pago": {
+          "name": "metodo_pago",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'Efectivo'"
+        },
+        "id_proveedor": {
+          "name": "id_proveedor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "fecha": {
+          "name": "fecha",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(CURRENT_TIMESTAMP)"
+        },
+        "id_usuario": {
+          "name": "id_usuario",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "egresos_id_proveedor_proveedores_id_proveedor_fk": {
+          "name": "egresos_id_proveedor_proveedores_id_proveedor_fk",
+          "tableFrom": "egresos",
+          "tableTo": "proveedores",
+          "columnsFrom": [
+            "id_proveedor"
+          ],
+          "columnsTo": [
+            "id_proveedor"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "egresos_id_usuario_usuarios_id_usuario_fk": {
+          "name": "egresos_id_usuario_usuarios_id_usuario_fk",
+          "tableFrom": "egresos",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "id_usuario"
+          ],
+          "columnsTo": [
+            "id_usuario"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "grupos_productos": {
+      "name": "grupos_productos",
+      "columns": {
+        "id_grupo": {
+          "name": "id_grupo",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ids_productos": {
+          "name": "ids_productos",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "logs": {
+      "name": "logs",
+      "columns": {
+        "id_log": {
+          "name": "id_log",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fecha": {
+          "name": "fecha",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(CURRENT_TIMESTAMP)"
+        },
+        "id_usuario": {
+          "name": "id_usuario",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "logs_id_usuario_usuarios_id_usuario_fk": {
+          "name": "logs_id_usuario_usuarios_id_usuario_fk",
+          "tableFrom": "logs",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "id_usuario"
+          ],
+          "columnsTo": [
+            "id_usuario"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "metodos_pago": {
+      "name": "metodos_pago",
+      "columns": {
+        "id_metodo": {
+          "name": "id_metodo",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "comision_porcentaje": {
+          "name": "comision_porcentaje",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "productos": {
+      "name": "productos",
+      "columns": {
+        "id_producto": {
+          "name": "id_producto",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "categoria": {
+          "name": "categoria",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "precio_lista": {
+          "name": "precio_lista",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "precio_venta": {
+          "name": "precio_venta",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "stock": {
+          "name": "stock",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "codigo_barras": {
+          "name": "codigo_barras",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "id_proveedor": {
+          "name": "id_proveedor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "productos_codigo_barras_unique": {
+          "name": "productos_codigo_barras_unique",
+          "columns": [
+            "codigo_barras"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "productos_id_proveedor_proveedores_id_proveedor_fk": {
+          "name": "productos_id_proveedor_proveedores_id_proveedor_fk",
+          "tableFrom": "productos",
+          "tableTo": "proveedores",
+          "columnsFrom": [
+            "id_proveedor"
+          ],
+          "columnsTo": [
+            "id_proveedor"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "proveedores": {
+      "name": "proveedores",
+      "columns": {
+        "id_proveedor": {
+          "name": "id_proveedor",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "telefono": {
+          "name": "telefono",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "direccion": {
+          "name": "direccion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "usuarios": {
+      "name": "usuarios",
+      "columns": {
+        "id_usuario": {
+          "name": "id_usuario",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rol": {
+          "name": "rol",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'user'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ventas": {
+      "name": "ventas",
+      "columns": {
+        "id_venta": {
+          "name": "id_venta",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "id_operacion": {
+          "name": "id_operacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "id_producto": {
+          "name": "id_producto",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "cantidad": {
+          "name": "cantidad",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "precio_venta": {
+          "name": "precio_venta",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "metodo_pago": {
+          "name": "metodo_pago",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'Efectivo'"
+        },
+        "comision_porcentaje": {
+          "name": "comision_porcentaje",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "fecha": {
+          "name": "fecha",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(CURRENT_TIMESTAMP)"
+        },
+        "id_usuario": {
+          "name": "id_usuario",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ventas_id_producto_productos_id_producto_fk": {
+          "name": "ventas_id_producto_productos_id_producto_fk",
+          "tableFrom": "ventas",
+          "tableTo": "productos",
+          "columnsFrom": [
+            "id_producto"
+          ],
+          "columnsTo": [
+            "id_producto"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "ventas_id_usuario_usuarios_id_usuario_fk": {
+          "name": "ventas_id_usuario_usuarios_id_usuario_fk",
+          "tableFrom": "ventas",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "id_usuario"
+          ],
+          "columnsTo": [
+            "id_usuario"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

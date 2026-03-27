@@ -114,12 +114,40 @@ pub fn run() {
         },
         Migration {
             version: 9,
+            description: "create_grupos_productos",
+            sql: "CREATE TABLE `grupos_productos` (
+                `id_grupo` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `nombre` text NOT NULL,
+                `ids_productos` text NOT NULL
+            );",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 10,
+            description: "create_ventas",
+            sql: "CREATE TABLE `ventas` (
+                `id_venta` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `id_operacion` text DEFAULT '' NOT NULL,
+                `id_producto` integer NOT NULL,
+                `cantidad` integer NOT NULL,
+                `precio_venta` real NOT NULL,
+                `metodo_pago` text DEFAULT 'Efectivo' NOT NULL,
+                `comision_porcentaje` real DEFAULT 0 NOT NULL,
+                `fecha` text DEFAULT (CURRENT_TIMESTAMP),
+                `id_usuario` integer NOT NULL,
+                FOREIGN KEY (`id_producto`) REFERENCES `productos`(`id_producto`) ON UPDATE no action ON DELETE no action,
+                FOREIGN KEY (`id_usuario`) REFERENCES `usuarios`(`id_usuario`) ON UPDATE no action ON DELETE no action
+            );",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 10,
             description: "seed_productos_inicial",
             sql: include_str!("../../productos.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
-            version: 10,
+            version: 11,
             description: "seed_usuarios_inicial",
             sql: "INSERT OR IGNORE INTO usuarios (id_usuario, nombre, password, rol) VALUES (1, 'admin', '1234', 'admin'), (2, 'operador', '123', 'user');",
             kind: MigrationKind::Up,
