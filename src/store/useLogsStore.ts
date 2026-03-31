@@ -14,7 +14,7 @@ interface LogsState {
   getLogs: (limit: number, offset: number) => Promise<void>;
 }
 
-export const useLogsStore = create<LogsState>((set, get) => ({
+export const useLogsStore = create<LogsState>((set) => ({
   logs: [],
   totalCountLogs: 0,
   isLoading: false,

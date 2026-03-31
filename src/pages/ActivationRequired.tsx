@@ -1,4 +1,4 @@
-import { ShieldAlert, CreditCard, ExternalLink, Mail, Phone } from "lucide-react";
+import { ShieldAlert, CreditCard, ExternalLink } from "lucide-react";
 
 
 import Card from "../components/ui/Card";
@@ -48,23 +48,6 @@ export function ActivationRequired({ expirationDate, isGracePeriod, onContinue }
                 </div>
               )}
             </div>
-
-            {/*    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest pl-1">Soporte Técnico</span>
-                  <a href="mailto:soporte@centauri.com" className="flex items-center gap-3 rounded-xl bg-neutral-900 px-4 py-3 text-neutral-300 hover:text-white hover:bg-neutral-800 transition-all border border-white/5 group">
-                    <Mail size={18} className="text-primary-400 group-hover:scale-110 transition-transform" />
-                    <span className="text-sm font-bold">Email</span>
-                  </a>
-               </div>
-               <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest pl-1">Ventas / Finanzas</span>
-                  <a href="tel:+123456789" className="flex items-center gap-3 rounded-xl bg-neutral-900 px-4 py-3 text-neutral-300 hover:text-white hover:bg-neutral-800 transition-all border border-white/5 group">
-                    <Phone size={18} className="text-accent-400 group-hover:scale-110 transition-transform" />
-                    <span className="text-sm font-bold">Llamar Ahora</span>
-                  </a>
-               </div>
-            </div> */}
 
             <div className="pt-4 flex flex-col gap-3">
               {isGracePeriod && (

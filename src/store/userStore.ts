@@ -15,7 +15,7 @@ interface LogsState {
   logout: () => void;
 }
 
-export const useUserStore = create<LogsState>((set, get) => ({
+export const useUserStore = create<LogsState>((set) => ({
   isLoading: false,
   error: null,
   currentUser: null,
