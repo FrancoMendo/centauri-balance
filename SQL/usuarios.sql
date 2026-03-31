@@ -1,0 +1,1 @@
+INSERT OR IGNORE INTO usuarios (id_usuario, nombre, password, rol) VALUES (1, 'admin', 'pichucrack', 'admin'), (2, 'operador', '123', 'user');
