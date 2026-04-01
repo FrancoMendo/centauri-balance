@@ -30,7 +30,6 @@ export function SalesHistory() {
   // Estados de Filtros y Paginación
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
-    d.setMonth(d.getMonth() - 1);
     d.setHours(0, 0, 0, 0);
     const tzOffset = d.getTimezoneOffset() * 60000;
     return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);

@@ -115,28 +115,10 @@ pub fn run() {
         Migration {
             version: 9,
             description: "create_grupos_productos",
-            sql: "CREATE TABLE `grupos_productos` (
+            sql: "CREATE TABLE IF NOT EXISTS `grupos_productos` (
                 `id_grupo` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 `nombre` text NOT NULL,
                 `ids_productos` text NOT NULL
-            );",
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 10,
-            description: "create_ventas",
-            sql: "CREATE TABLE `ventas` (
-                `id_venta` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-                `id_operacion` text DEFAULT '' NOT NULL,
-                `id_producto` integer NOT NULL,
-                `cantidad` integer NOT NULL,
-                `precio_venta` real NOT NULL,
-                `metodo_pago` text DEFAULT 'Efectivo' NOT NULL,
-                `comision_porcentaje` real DEFAULT 0 NOT NULL,
-                `fecha` text DEFAULT (CURRENT_TIMESTAMP),
-                `id_usuario` integer NOT NULL,
-                FOREIGN KEY (`id_producto`) REFERENCES `productos`(`id_producto`) ON UPDATE no action ON DELETE no action,
-                FOREIGN KEY (`id_usuario`) REFERENCES `usuarios`(`id_usuario`) ON UPDATE no action ON DELETE no action
             );",
             kind: MigrationKind::Up,
         },
@@ -155,7 +137,7 @@ pub fn run() {
         Migration {
             version: 12,
             description: "create_parametros",
-            sql: "CREATE TABLE `parametros` (
+            sql: "CREATE TABLE IF NOT EXISTS `parametros` (
                 `id_parametro` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 `key` text NOT NULL,
                 `value` text NOT NULL,
@@ -166,7 +148,19 @@ pub fn run() {
         Migration {
             version: 13,
             description: "create_index_parametros",
-            sql: "CREATE UNIQUE INDEX `parametros_key_unique` ON `parametros` (`key`);",
+            sql: "CREATE UNIQUE INDEX IF NOT EXISTS `parametros_key_unique` ON `parametros` (`key`);",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 14,
+            description: "fix_utc_timestamps_to_argentina_localtime",
+            sql: "
+                -- Convertir fechas existentes de UTC a hora Argentina (UTC-3).
+                -- Las nuevas inserciones ya pasan fecha explícita desde JavaScript con hora local.
+                UPDATE ventas SET fecha = datetime(fecha, '-3 hours') WHERE fecha IS NOT NULL AND fecha LIKE '____-__-__ __:__:%';
+                UPDATE egresos SET fecha = datetime(fecha, '-3 hours') WHERE fecha IS NOT NULL AND fecha LIKE '____-__-__ __:__:%';
+                UPDATE logs SET fecha = datetime(fecha, '-3 hours') WHERE fecha IS NOT NULL AND fecha LIKE '____-__-__ __:__:%';
+            ",
             kind: MigrationKind::Up,
         }
 

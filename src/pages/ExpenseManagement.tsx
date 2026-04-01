@@ -9,6 +9,7 @@ import { Select } from "../components/ui/Select";
 import { getDb } from "../lib/db";
 import { egresos } from "../lib/schema";
 import { eq, desc } from "drizzle-orm";
+import { localTimestamp } from "../lib/localTimestamp";
 
 interface Expense {
   id_egreso: number;
@@ -63,7 +64,8 @@ export function ExpenseManagement() {
         categoria: catInput,
         monto: montoInput,
         metodo_pago: metodoPagoInput,
-        id_usuario: 1, // Usuario por defecto hasta tener módulo auth
+        fecha: localTimestamp(),
+        id_usuario: 1,
       });
 
       // Limpiar formulario

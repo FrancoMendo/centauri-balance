@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useInventoryStore } from "../../store/useInventoryStore";
 import { X, Save } from "lucide-react";
-import { NewProducto } from "../../lib/schema";
+import { NewProducto, productos as productosTable } from "../../lib/schema";
 import { PriceInput } from "../../components/PriceInput";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { Label } from "../../components/ui/Label";
+import { getDb } from "../../lib/db";
+import { eq } from "drizzle-orm";
 
 interface AddProductModalProps {
   isOpen: boolean;
@@ -15,7 +17,6 @@ interface AddProductModalProps {
 export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
   const addProduct = useInventoryStore((state) => state.addProduct);
   const isLoading = useInventoryStore((state) => state.isLoading);
-  const products = useInventoryStore((state) => state.products);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<NewProducto>({
@@ -89,23 +90,39 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
     if (isLoading) return;
     setLocalError(null);
 
-    // Validación duplicidad
-    const barcode = formData.codigo_barras?.trim();
-    if (barcode) {
-      const barcodeExists = products.find(p => p.codigo_barras === barcode);
-      if (barcodeExists) {
-        setLocalError(`El código de barras "${barcode}" ya le pertenece al producto: "${barcodeExists.nombre}".`);
-        return;
-      }
-    }
+    // Validación duplicidad — consulta directa a SQLite (no array en memoria)
+    try {
+      const db = await getDb();
 
-    const nm = formData.nombre?.trim().toLowerCase() || "";
-    if (nm) {
-      const nameExists = products.find(p => (p.nombre.trim().toLowerCase()) === nm);
-      if (nameExists) {
-        setLocalError(`Ya existe un producto registrado bajo el nombre "${nameExists.nombre}".`);
-        return;
+      const barcode = formData.codigo_barras?.trim();
+      if (barcode) {
+        const barcodeRows = await db
+          .select({ id_producto: productosTable.id_producto, nombre: productosTable.nombre })
+          .from(productosTable)
+          .where(eq(productosTable.codigo_barras, barcode))
+          .limit(1);
+        if (barcodeRows.length > 0) {
+          setLocalError(`El código de barras "${barcode}" ya le pertenece al producto: "${barcodeRows[0].nombre}".`);
+          return;
+        }
       }
+
+      const nm = formData.nombre?.trim() || "";
+      if (nm) {
+        const nameRows = await db
+          .select({ id_producto: productosTable.id_producto, nombre: productosTable.nombre })
+          .from(productosTable)
+          .where(eq(productosTable.nombre, nm))
+          .limit(1);
+        if (nameRows.length > 0) {
+          setLocalError(`Ya existe un producto registrado bajo el nombre "${nameRows[0].nombre}".`);
+          return;
+        }
+      }
+    } catch (validationError) {
+      console.error("Error validando duplicados:", validationError);
+      setLocalError("Error al verificar duplicados en la base de datos.");
+      return;
     }
     
     // Convertir de strings a num por si acaso vienen como string desde los inputs

@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef, useMemo } from "react";
-import { useInventoryStore } from "../../store/useInventoryStore";
+import { useEffect, useState, useRef } from "react";
+import { useInventoryStore, PRODUCTS_PER_PAGE } from "../../store/useInventoryStore";
 import { Package, Plus, Edit2, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "../../components/ui/Input";
 import { AddProductModal } from "./AddProductModal";
@@ -7,13 +7,27 @@ import { EditProductModal } from "./EditProductModal";
 import { Producto } from "../../lib/schema";
 import { Button } from "../../components/ui/Button";
 
+/** Delay en ms para debounce de búsqueda */
+const SEARCH_DEBOUNCE_MS = 300;
+
 export function InventoryList() {
-  const { products, isLoading, error, fetchProducts } = useInventoryStore();
+  const {
+    products,
+    totalCount,
+    currentPage,
+    searchTerm,
+    isLoading,
+    error,
+    fetchProductsPage,
+    setSearchTerm,
+    setPage,
+    findByBarcode,
+  } = useInventoryStore();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Producto | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 20;
+  const [localSearch, setLocalSearch] = useState(searchTerm);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Variables de escaner de código de barras global
   const bufferRef = useRef("");
@@ -22,9 +36,28 @@ export function InventoryList() {
   const lastScannedTimeRef = useRef(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const totalPages = Math.ceil(totalCount / PRODUCTS_PER_PAGE);
+
+  // Cargar primera página al montar
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    fetchProductsPage(1, "");
+  }, [fetchProductsPage]);
+
+  // Debounce de búsqueda local → SQL
+  useEffect(() => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+    searchTimerRef.current = setTimeout(() => {
+      if (localSearch !== searchTerm) {
+        setSearchTerm(localSearch);
+      }
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [localSearch, searchTerm, setSearchTerm]);
 
   // Manejo de atajos de teclado globales (Alt+N ó Ctrl+N) y Escáner de Barras
   useEffect(() => {
@@ -61,16 +94,16 @@ export function InventoryList() {
           lastScannedCodeRef.current = code;
           lastScannedTimeRef.current = dateNow;
 
-          // Impactar el buscador para ubicar el producto
+          // Buscar por código de barras directo en SQLite
           e.preventDefault();
           e.stopPropagation();
-          setSearchTerm(code);
+          setLocalSearch(code);
 
-          // Buscar y si existe, abrir el modal de edición al instante
-          const match = products.find(p => p.codigo_barras === code);
-          if (match) {
-            setProductToEdit(match);
-          }
+          findByBarcode(code).then((match) => {
+            if (match) {
+              setProductToEdit(match);
+            }
+          });
         }
       } else if (e.key.length === 1) {
         bufferRef.current += e.key;
@@ -79,32 +112,7 @@ export function InventoryList() {
 
     window.addEventListener("keydown", handleGlobalBarcode, { capture: true });
     return () => window.removeEventListener("keydown", handleGlobalBarcode, { capture: true });
-  }, [products]);
-
-  const baseFilteredProducts = useMemo(() => {
-    if (!searchTerm.trim()) return products;
-
-    const term = searchTerm.toLowerCase().trim();
-    return products.filter(
-      (p) =>
-        p.nombre.toLowerCase().includes(term) ||
-        (p.codigo_barras && p.codigo_barras.toLowerCase().includes(term)) ||
-        p.id_producto.toString() === term ||
-        (p.categoria && p.categoria.toLowerCase().includes(term))
-    );
-  }, [products, searchTerm]);
-
-  const totalPages = Math.ceil(baseFilteredProducts.length / ITEMS_PER_PAGE);
-
-  const paginatedProducts = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return baseFilteredProducts.slice(start, start + ITEMS_PER_PAGE);
-  }, [baseFilteredProducts, currentPage]);
-
-  // Reiniciar la página al escribir
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+  }, [findByBarcode]);
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-100">
@@ -112,6 +120,9 @@ export function InventoryList() {
         <h2 className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
           <Package className="w-6 h-6 text-blue-600" />
           Inventario
+          <span className="ml-2 text-sm font-normal text-gray-400">
+            ({totalCount.toLocaleString("es-AR")} productos)
+          </span>
         </h2>
         <div className="flex items-center justify-end w-full max-w-xl gap-4">
           <div className="relative w-full max-w-sm hidden sm:block">
@@ -120,8 +131,8 @@ export function InventoryList() {
               ref={searchInputRef}
               type="text"
               placeholder="Buscar (Ej: nombre, código de barras...)"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
               className="pl-10 h-10 w-full bg-gray-50 border-gray-200"
             />
           </div>
@@ -143,8 +154,8 @@ export function InventoryList() {
         <Input
           type="text"
           placeholder="Buscar..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
           className="pl-10 h-10 w-full"
         />
       </div>
@@ -167,14 +178,14 @@ export function InventoryList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {paginatedProducts.length === 0 ? (
+              {products.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500">
+                  <td colSpan={7} className="py-8 text-center text-gray-500">
                     {searchTerm ? "No se encontraron productos con esa búsqueda." : "No hay productos en el inventario."}
                   </td>
                 </tr>
               ) : (
-                paginatedProducts.map((p) => (
+                products.map((p) => (
                   <tr key={p.id_producto} className="hover:bg-gray-50/50 transition-colors">
                     <td className="py-3 px-4 text-gray-800">{p.id_producto}</td>
                     <td className="py-3 px-4 text-gray-800 font-medium">{p.nombre}</td>
@@ -208,14 +219,14 @@ export function InventoryList() {
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 mt-4 bg-white rounded-b-lg">
           <div className="flex flex-1 justify-between sm:hidden">
             <Button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              onClick={() => setPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
               variant="outline"
             >
               Anterior
             </Button>
             <Button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
               variant="outline"
             >
@@ -225,13 +236,13 @@ export function InventoryList() {
           <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-gray-700">
-                Mostrando <span className="font-medium">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> a <span className="font-medium">{Math.min(currentPage * ITEMS_PER_PAGE, baseFilteredProducts.length)}</span> de <span className="font-medium">{baseFilteredProducts.length}</span> resultados
+                Mostrando <span className="font-medium">{((currentPage - 1) * PRODUCTS_PER_PAGE) + 1}</span> a <span className="font-medium">{Math.min(currentPage * PRODUCTS_PER_PAGE, totalCount)}</span> de <span className="font-medium">{totalCount.toLocaleString("es-AR")}</span> resultados
               </p>
             </div>
             <div>
               <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                 <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  onClick={() => setPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                   className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors focus:z-20 focus:outline-offset-0"
                 >
@@ -239,10 +250,10 @@ export function InventoryList() {
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 </button>
                 <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:z-20 focus:outline-offset-0">
-                  Página {currentPage} de {totalPages}
+                  Página {currentPage} de {totalPages.toLocaleString("es-AR")}
                 </span>
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
                   className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors focus:z-20 focus:outline-offset-0"
                 >

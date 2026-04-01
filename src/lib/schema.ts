@@ -54,7 +54,7 @@ export const ventas = sqliteTable("ventas", {
   precio_venta: real("precio_venta").notNull(), // Precio al momento de la venta
   metodo_pago: text("metodo_pago").notNull().default("Efectivo"), // Ej. Efectivo, Tarjeta, Transferencia
   comision_porcentaje: real("comision_porcentaje").notNull().default(0), // Snapshot del % de pérdida al vender
-  fecha: text("fecha").default(sql`(CURRENT_TIMESTAMP)`),
+  fecha: text("fecha").default(sql`(datetime('now','localtime'))`),
   id_usuario: integer("id_usuario").notNull().references(() => usuarios.id_usuario),
 });
 
@@ -68,7 +68,7 @@ export const egresos = sqliteTable("egresos", {
   monto: real("monto").notNull(),
   metodo_pago: text("metodo_pago").notNull().default("Efectivo"), // Ej. Efectivo, Tarjeta, Transferencia
   id_proveedor: integer("id_proveedor").references(() => proveedores.id_proveedor), // Opcional
-  fecha: text("fecha").default(sql`(CURRENT_TIMESTAMP)`),
+  fecha: text("fecha").default(sql`(datetime('now','localtime'))`),
   id_usuario: integer("id_usuario").notNull().references(() => usuarios.id_usuario),
 });
 
@@ -78,7 +78,7 @@ export type NewEgreso = typeof egresos.$inferInsert;
 export const logs = sqliteTable("logs", {
   id_log: integer("id_log").primaryKey({ autoIncrement: true }),
   descripcion: text("descripcion").notNull(),
-  fecha: text("fecha").default(sql`(CURRENT_TIMESTAMP)`),
+  fecha: text("fecha").default(sql`(datetime('now','localtime'))`),
   id_usuario: integer("id_usuario").references(() => usuarios.id_usuario),
 });
 

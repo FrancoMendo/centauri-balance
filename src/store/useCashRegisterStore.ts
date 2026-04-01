@@ -4,6 +4,7 @@ import { getDb } from "../lib/db";
 import { egresos, ventas } from "../lib/schema";
 import { eq, sql } from "drizzle-orm";
 import { logAction } from "../lib/logger";
+import { localTimestamp } from "../lib/localTimestamp";
 
 interface CashRegisterState {
   dateRange: { start: string; end: string };
@@ -111,7 +112,7 @@ export const useCashRegisterStore = create<CashRegisterState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const db = await getDb();
-      await db.insert(egresos).values(newExpense);
+      await db.insert(egresos).values({ ...newExpense, fecha: localTimestamp() });
       // Refrescar
       await get().fetchExpenses();
       await get().fetchTodaySummary();

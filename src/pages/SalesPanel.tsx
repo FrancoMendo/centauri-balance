@@ -13,20 +13,28 @@ import { productos as productosTable } from "../lib/schema";
 import { eq, sql } from "drizzle-orm";
 import { ventas, metodos_pago as pmTable } from "../lib/schema";
 import { logAction } from "../lib/logger";
+import { localTimestamp } from "../lib/localTimestamp";
+import type { Producto } from "../lib/schema";
 
 const GENERIC_BARCODE = "NO_CODE_GENERIC";
 
+/** Delay en ms para debounce de búsqueda por texto */
+const SEARCH_DEBOUNCE_MS = 250;
+
 export function SalesPanel() {
   const { cart, addToCart, removeFromCart, updateQuantity, updatePrice, clearCart, getTotal, getItemCount, searchQuery, setSearchQuery } = useSalesStore();
-  const { products, fetchProducts } = useInventoryStore();
+  const { searchProductsSQL, findByBarcode } = useInventoryStore();
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [searchResults, setSearchResults] = useState<typeof products>([]);
+  const [searchResults, setSearchResults] = useState<Producto[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedResultIndex, setSelectedResultIndex] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("Efectivo");
   const [paymentMethodsList, setPaymentMethodsList] = useState<{ nombre: string; comision: number }[]>([]);
   const [isGenericModalOpen, setIsGenericModalOpen] = useState(false);
+
+  // Ref para debounce timer
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Referencias para escaneo en segundo plano (Pistola Láser)
   const bufferRef = useRef("");
@@ -59,7 +67,6 @@ export function SalesPanel() {
         if (methods.length > 0) setPaymentMethod(methods[0].nombre);
 
         // Asegurarnos de que el "Producto Genérico" exista en la BD para ventas sin código
-        // Evitamos doble-inserción en React StrictMode con un bloque try independiente y asegurándonos que el componente está montado
         try {
           const resGenerico = await db.select().from(productosTable).where(eq(productosTable.codigo_barras, GENERIC_BARCODE));
           if (resGenerico.length === 0) {
@@ -68,10 +75,10 @@ export function SalesPanel() {
               categoria: "Varios",
               precio_lista: 0,
               precio_venta: 0,
-              stock: 999999, // Stock casi infinito por ser genérico
+              stock: 999999,
               codigo_barras: GENERIC_BARCODE,
               descripcion: "Venta manual sin código",
-            } as any).onConflictDoNothing(); // Drizzle SQLite previene error si otro hilo ya lo insertó
+            } as any).onConflictDoNothing();
           }
         } catch (e) {
           // Ignorar posibles choques silenciosos de UNIQUE
@@ -83,12 +90,7 @@ export function SalesPanel() {
     initPM();
   }, []);
 
-  // Cargar productos al montar
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  // Buscar productos cuando cambia el query
+  // Buscar productos con debounce cuando cambia el query — DELEGADO A SQLITE
   useEffect(() => {
     if (searchQuery.trim().length === 0) {
       setSearchResults([]);
@@ -96,21 +98,22 @@ export function SalesPanel() {
       return;
     }
 
-    const query = searchQuery.toLowerCase().trim();
-    const filtered = products.filter(
-      (p) =>
-        p.nombre.toLowerCase().includes(query) ||
-        (p.codigo_barras && p.codigo_barras.includes(query)) ||
-        (p.categoria && p.categoria.toLowerCase().includes(query))
-    );
+    // Limpiar timer previo (debounce)
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
 
-    // Limitamos la cantidad máxima de resultados mostrados para evitar un colapso en el renderizado del DOM (congelar pagina)
-    // Especialmente crítico cuando hay una base +87.000 de productos y se teclea apenas "1 letra".
-    setSearchResults(filtered.slice(0, 20));
-    setShowResults(filtered.length > 0);
-    setSelectedResultIndex(0);
+    searchTimerRef.current = setTimeout(async () => {
+      const results = await searchProductsSQL(searchQuery.trim(), 20);
+      setSearchResults(results);
+      setShowResults(results.length > 0);
+      setSelectedResultIndex(0);
+    }, SEARCH_DEBOUNCE_MS);
 
-  }, [searchQuery, products]);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery, searchProductsSQL]);
 
   // Atajos globales: Alt+B para buscador, Alt+N para ítem manual
   useEffect(() => {
@@ -127,19 +130,15 @@ export function SalesPanel() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Detector Global de Pistola de Código de Barras (funciona sin foco y con anti-rebote temporal)
+  // Detector Global de Pistola de Código de Barras — BUSCA DIRECTO EN SQLITE
   useEffect(() => {
     const handleGlobalBarcode = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
 
       const timeNow = performance.now();
-      // Un humano teclea a >80ms entre teclas, una pistola manda todo a ~2-15ms
       if (timeNow - lastKeyTimeRef.current > 50) {
-        bufferRef.current = ""; // Reiniciar buffer si la velocidad es humana
+        bufferRef.current = "";
       } else {
-        // Rafaga de pistola detectada (velocidad inhumana). 
-        // Si el foco está en el input, evitamos que estos caracteres se "impriman"
-        // físicamente en React, evitando que parpadee el menú de búsqueda (sometiendo el DOM a estrés).
         if (document.activeElement === searchInputRef.current) {
           e.preventDefault();
           e.stopPropagation();
@@ -149,45 +148,44 @@ export function SalesPanel() {
 
       if (e.key === "Enter") {
         const code = bufferRef.current;
-        bufferRef.current = ""; // Siempre limpiar al apretar Enter
+        bufferRef.current = "";
         
-        // Si acumuló lo suficiente rápido, fue una pistola
         if (code.length >= 3) {
-          // Anti-duplicado por láser (Prevenir el mismo código en menos de 800ms)
           const dateNow = Date.now();
           if (lastScannedCodeRef.current === code && (dateNow - lastScannedTimeRef.current < 800)) {
             e.preventDefault();
             e.stopPropagation();
-            return; // Bloqueo silencioso del duplicado por rebote
+            return;
           }
           
           lastScannedCodeRef.current = code;
           lastScannedTimeRef.current = dateNow;
 
-          // Buscar el producto
-          const product = products.find(p => p.codigo_barras === code);
-          if (product) {
-            e.preventDefault();
-            e.stopPropagation();
-            addToCart(product);
-            
-            // Si el puntero estaba justo dentro de nuestro buscador manualmente, lo limpiamos para que no quede basura textual
-            if (document.activeElement === searchInputRef.current) {
-              setSearchQuery("");
-              setShowResults(false);
-              searchInputRef.current?.blur();
+          // Búsqueda directa en SQLite por código de barras (no en array en memoria)
+          e.preventDefault();
+          e.stopPropagation();
+          
+          findByBarcode(code).then((product) => {
+            if (product) {
+              addToCart(product);
+              if (document.activeElement === searchInputRef.current) {
+                setSearchQuery("");
+                setShowResults(false);
+                searchInputRef.current?.blur();
+              }
+            } else {
+              toast.error(`Producto no encontrado: ${code}`);
             }
-          }
+          });
         }
       } else if (e.key.length === 1) {
         bufferRef.current += e.key;
       }
     };
 
-    // Usamos capture: true para evaluar las teclas antes de que los inputs HTML reaccionen
     window.addEventListener("keydown", handleGlobalBarcode, { capture: true });
     return () => window.removeEventListener("keydown", handleGlobalBarcode, { capture: true });
-  }, [products, addToCart, setSearchQuery]);
+  }, [addToCart, setSearchQuery, findByBarcode]);
 
   const handleSearchKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -235,7 +233,6 @@ export function SalesPanel() {
           if (matchRows.length > 0) {
             dbProductId = matchRows[0].id_producto;
           } else {
-            // Auto-crear producto en el inventario para que el Historial de Ventas pueda mostrar su nombre
             const insertResult = await db.insert(productosTable).values({
               nombre: item.product.nombre,
               categoria: "Varios",
@@ -249,7 +246,6 @@ export function SalesPanel() {
             if (insertResult.length > 0) {
                dbProductId = insertResult[0].id;
             } else {
-               // Fallback robusto por si el driver driver no retorna el insertedId bien
                const latest = await db.select().from(productosTable).where(eq(productosTable.nombre, item.product.nombre));
                dbProductId = latest[0].id_producto;
             }
@@ -264,6 +260,7 @@ export function SalesPanel() {
           precio_venta: item.product.precio_venta,
           metodo_pago: paymentMethod,
           comision_porcentaje: commission,
+          fecha: localTimestamp(),
           id_usuario: 1,
         });
 
@@ -273,22 +270,24 @@ export function SalesPanel() {
           .set({ stock: sql`${productosTable.stock} - ${item.quantity}` })
           .where(eq(productosTable.id_producto, dbProductId));
 
-        // Novedad: Si el producto original NO tenía precio ($0) y se lo establecimos en caja, lo guardamos permanentemente
+        // Si el producto original NO tenía precio ($0) y se lo establecimos en caja, lo guardamos permanentemente
         if (dbProductId > 0 && item.product.id_producto > 0) {
-          const originalProduct = products.find(p => p.id_producto === item.product.id_producto);
-          if (originalProduct && originalProduct.precio_venta === 0 && item.product.precio_venta > 0) {
+          // Re-consultar el precio actual en la BD para comparar (no depender de array en memoria)
+          const currentRows = await db.select({ precio_venta: productosTable.precio_venta })
+            .from(productosTable)
+            .where(eq(productosTable.id_producto, item.product.id_producto))
+            .limit(1);
+          
+          if (currentRows.length > 0 && currentRows[0].precio_venta === 0 && item.product.precio_venta > 0) {
             await db
               .update(productosTable)
               .set({ precio_venta: item.product.precio_venta })
               .where(eq(productosTable.id_producto, item.product.id_producto));
-            // Actualizamos en local si alguien busca el mismo id despues en memoria temporal
-            originalProduct.precio_venta = item.product.precio_venta;
           }
         }
       }
 
       clearCart();
-      await fetchProducts();
       await logAction(`Venta registrada exitosamente por $${total.toFixed(2)} (${cart.length} ítems, Medio: ${paymentMethod})`);
       toast.success("Venta registrada con éxito.");
     } catch (error) {
@@ -303,7 +302,6 @@ export function SalesPanel() {
   // Atajo global: Enter para cobrar cuando foco no está en el buscador
   useEffect(() => {
     const handleGlobalEnter = (e: KeyboardEvent) => {
-      // Solo si no estamos escribiendo en el buscador y el carrito tiene items
       if (
         e.key === "F12" &&
         cart.length > 0 &&
