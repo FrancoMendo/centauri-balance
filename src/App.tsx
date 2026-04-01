@@ -10,6 +10,7 @@ import { PaymentMethodsManagement } from "./pages/PaymentMethodsManagement";
 import { InventoryManagement } from "./pages/InventoryManagement";
 import { CashRegisterClose } from "./pages/CashRegisterClose";
 import { EdicionMultiple } from "./pages/EdicionMultiple";
+import { BusinessHoursSettings } from "./pages/BusinessHoursSettings";
 import Logs from "./pages/Logs";
 import { useUserStore } from "./store/userStore";
 import Login from "./pages/Login";
@@ -37,6 +38,7 @@ function App() {
       "6": "expense_management",
       "7": "payment_methods",
       "8": "logs",
+      "9": "business_hours",
     };
 
     const targetPage = pageMap[e.key];
@@ -86,6 +88,7 @@ function App() {
               {currentPage === "payment_methods" && canAccessPage("payment_methods", currentUser.rol) && <PaymentMethodsManagement />}
               {currentPage === "logs" && canAccessPage("logs", currentUser.rol) && <Logs />}
               {currentPage === "bulk_edit" && canAccessPage("bulk_edit", currentUser.rol) && <EdicionMultiple />}
+              {currentPage === "business_hours" && canAccessPage("business_hours", currentUser.rol) && <BusinessHoursSettings />}
 
               {/* Fallback si intenta entrar a algo prohibido */}
               {!canAccessPage(currentPage, currentUser.rol) && <div className="flex flex-col items-center justify-center h-[60vh] text-neutral-500">

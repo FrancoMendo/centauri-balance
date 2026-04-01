@@ -10,7 +10,8 @@ import {
   LogOut,
   Layers,
   ShieldUser,
-  IdCard
+  IdCard,
+  Clock
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
@@ -79,6 +80,12 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
       label: "Logs",
       icon: <LucidePaperclip className="w-5 h-5" />,
       shortcut: "Alt+8",
+    },
+    {
+      id: "business_hours",
+      label: "Horario del Negocio",
+      icon: <Clock className="w-5 h-5" />,
+      shortcut: "Alt+9",
     },
   ];
 

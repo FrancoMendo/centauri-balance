@@ -15,6 +15,7 @@ export function CashRegisterClose() {
     todayExpenses,
     expenses,
     isLoading,
+    initDateRange,
     fetchTodaySummary,
     fetchExpenses,
     addExpense,
@@ -25,6 +26,11 @@ export function CashRegisterClose() {
   const [expenseDesc, setExpenseDesc] = useState("");
   const [expenseAmount, setExpenseAmount] = useState<number>(0);
   const descInputRef = useRef<HTMLInputElement>(null);
+
+  // Inicializar rango de fechas desde el horario comercial
+  useEffect(() => {
+    initDateRange();
+  }, [initDateRange]);
 
   useEffect(() => {
     fetchTodaySummary();

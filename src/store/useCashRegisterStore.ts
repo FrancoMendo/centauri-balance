@@ -5,6 +5,7 @@ import { egresos, ventas } from "../lib/schema";
 import { eq, sql } from "drizzle-orm";
 import { logAction } from "../lib/logger";
 import { localTimestamp } from "../lib/localTimestamp";
+import { fetchBusinessHoursFromDB, getBusinessDateRange } from "../hooks/useBusinessHours";
 
 interface CashRegisterState {
   dateRange: { start: string; end: string };
@@ -15,29 +16,27 @@ interface CashRegisterState {
   error: string | null;
 
   setDateRange: (start: string, end: string) => void;
+  initDateRange: () => Promise<void>;
   fetchTodaySummary: () => Promise<void>;
   fetchExpenses: () => Promise<void>;
   addExpense: (expense: NewEgreso) => Promise<void>;
   deleteExpense: (id: number) => Promise<void>;
 }
 
-/** Devuelve un rango por defecto (Hoy 00:00. a Mañana 04:00 por ejemplo, o solo Hoy) */
-function getDefaultRange() {
+/** Rango temporal hasta que se cargue desde la BD */
+function getFallbackRange() {
   const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const formatForInput = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-  
-  // Transformar local a ISO para input datetime-local truncando segundos (YYYY-MM-DDTHH:mm)
-  const formatForInput = (d: Date) => {
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-
   return { start: formatForInput(start), end: formatForInput(end) };
 }
 
 export const useCashRegisterStore = create<CashRegisterState>((set, get) => ({
-  dateRange: getDefaultRange(),
+  dateRange: getFallbackRange(),
   todaySales: { total: 0, count: 0 },
   todayExpenses: { total: 0, count: 0 },
   expenses: [],
@@ -46,6 +45,16 @@ export const useCashRegisterStore = create<CashRegisterState>((set, get) => ({
 
   setDateRange: (start: string, end: string) => {
     set({ dateRange: { start, end } });
+  },
+
+  initDateRange: async () => {
+    try {
+      const bh = await fetchBusinessHoursFromDB();
+      const range = getBusinessDateRange(bh);
+      set({ dateRange: range });
+    } catch (err) {
+      console.error("Error al inicializar rango de fechas:", err);
+    }
   },
 
   fetchTodaySummary: async () => {

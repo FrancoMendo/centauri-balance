@@ -7,6 +7,7 @@ import { eq, desc, and, gte, lte, sql, inArray } from "drizzle-orm";
 import { Input } from "../components/ui/Input";
 import { Label } from "../components/ui/Label";
 import Pagination from "../components/ui/Pagination";
+import { useBusinessHours, getBusinessDateRange } from "../hooks/useBusinessHours";
 
 interface SaleOperation {
   id_operacion: string;
@@ -27,26 +28,33 @@ export function SalesHistory() {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedOp, setExpandedOp] = useState<string | null>(null);
 
+  // Horario del negocio → fechas por defecto
+  const { hours, isLoading: hoursLoading } = useBusinessHours();
+
   // Estados de Filtros y Paginación
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
-  });
-  const [endDate, setEndDate] = useState(() => {
-    const d = new Date();
-    d.setHours(23, 59, 59, 999);
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
-  });
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [datesReady, setDatesReady] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalOperations, setTotalOperations] = useState(0);
   const pageSize = 10;
 
+  // Inicializar fechas cuando el horario se carga
   useEffect(() => {
-    fetchHistory(currentPage);
-  }, [currentPage]);
+    if (!hoursLoading) {
+      const range = getBusinessDateRange(hours);
+      setStartDate(range.start);
+      setEndDate(range.end);
+      setDatesReady(true);
+    }
+  }, [hoursLoading, hours]);
+
+  // Cargar historial cuando las fechas están listas o cambia la página
+  useEffect(() => {
+    if (datesReady) {
+      fetchHistory(currentPage);
+    }
+  }, [currentPage, datesReady]);
 
   const handleSearch = () => {
     if (currentPage === 1) {
