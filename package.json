@@ -12,10 +12,12 @@
     "migrate:localhost": "drizzle-kit migrate --config=drizzle.config.ts",
     "db:studio": "drizzle-kit studio",
     "db:seed": "node seed-localhost.js",
-    "build:exe": "tauri build"
+    "build:exe": "tauri build",
+    "build:linux": "npm run tauri build -- --bundles deb,rpm",
+    "clear:dist:linux": "sudo rm -rf dist/ && sudo rm -rf src-tauri/target/"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/api": "~2.10.0",
     "@tauri-apps/plugin-opener": "^2.5.0",
     "@tauri-apps/plugin-sql": "^2.4.0",
     "clsx": "^2.1.1",

@@ -17,10 +17,6 @@ export default function Logs() {
     getInitialData();
   }, [currentPage]);
 
-  useEffect(() => {
-    console.log('totalCountLogs:', totalCountLogs)
-    console.log('currentPage:', currentPage)
-  }, [totalCountLogs, currentPage])
 
 
   return (

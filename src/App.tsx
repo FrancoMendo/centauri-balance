@@ -1,17 +1,18 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import "./App.css";
 import { Toaster } from 'sonner';
 import { Sidebar } from "./components/layout/Sidebar";
 import { PageView, canAccessPage } from "./lib/navigation";
-import { SalesPanel } from "./pages/SalesPanel";
-import { SalesHistory } from "./pages/SalesHistory";
-import { ExpenseManagement } from "./pages/ExpenseManagement";
-import { PaymentMethodsManagement } from "./pages/PaymentMethodsManagement";
-import { InventoryManagement } from "./pages/InventoryManagement";
-import { CashRegisterClose } from "./pages/CashRegisterClose";
-import { EdicionMultiple } from "./pages/EdicionMultiple";
-import { BusinessHoursSettings } from "./pages/BusinessHoursSettings";
-import Logs from "./pages/Logs";
+
+const SalesPanel = lazy(() => import("./pages/SalesPanel").then(m => ({ default: m.SalesPanel })));
+const SalesHistory = lazy(() => import("./pages/SalesHistory").then(m => ({ default: m.SalesHistory })));
+const ExpenseManagement = lazy(() => import("./pages/ExpenseManagement").then(m => ({ default: m.ExpenseManagement })));
+const PaymentMethodsManagement = lazy(() => import("./pages/PaymentMethodsManagement").then(m => ({ default: m.PaymentMethodsManagement })));
+const InventoryManagement = lazy(() => import("./pages/InventoryManagement").then(m => ({ default: m.InventoryManagement })));
+const CashRegisterClose = lazy(() => import("./pages/CashRegisterClose").then(m => ({ default: m.CashRegisterClose })));
+const EdicionMultiple = lazy(() => import("./pages/EdicionMultiple").then(m => ({ default: m.EdicionMultiple })));
+const BusinessHoursSettings = lazy(() => import("./pages/BusinessHoursSettings").then(m => ({ default: m.BusinessHoursSettings })));
+const Logs = lazy(() => import("./pages/Logs"));
 import { useUserStore } from "./store/userStore";
 import Login from "./pages/Login";
 import { useLicense } from "./hooks/useLicense";
@@ -76,25 +77,27 @@ function App() {
 
 
           {/* Contenido principal - con margin left para la sidebar fija */}
-          <main className="flex-1 ml-64 p-8 min-w-0 flex justify-center animate-in fade-in duration-500 overflow-y-auto">
+          <main className="flex-1 ml-64 p-8 min-w-0 flex justify-center overflow-y-auto">
             <div className="w-[90%] 2xl:w-[85%] max-w-[1600px]">
-              {currentPage === "sales" && <SalesPanel />}
-              {currentPage === "sales_history" && <SalesHistory />}
-              {currentPage === "inventory" && <InventoryManagement />}
+              <Suspense fallback={<div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>}>
+                {currentPage === "sales" && <SalesPanel />}
+                {currentPage === "sales_history" && <SalesHistory />}
+                {currentPage === "inventory" && <InventoryManagement />}
 
-              {/* Rutas Protegidas */}
-              {currentPage === "cash_register" && canAccessPage("cash_register", currentUser.rol) && <CashRegisterClose />}
-              {currentPage === "expense_management" && canAccessPage("expense_management", currentUser.rol) && <ExpenseManagement />}
-              {currentPage === "payment_methods" && canAccessPage("payment_methods", currentUser.rol) && <PaymentMethodsManagement />}
-              {currentPage === "logs" && canAccessPage("logs", currentUser.rol) && <Logs />}
-              {currentPage === "bulk_edit" && canAccessPage("bulk_edit", currentUser.rol) && <EdicionMultiple />}
-              {currentPage === "business_hours" && canAccessPage("business_hours", currentUser.rol) && <BusinessHoursSettings />}
+                {/* Rutas Protegidas */}
+                {currentPage === "cash_register" && canAccessPage("cash_register", currentUser.rol) && <CashRegisterClose />}
+                {currentPage === "expense_management" && canAccessPage("expense_management", currentUser.rol) && <ExpenseManagement />}
+                {currentPage === "payment_methods" && canAccessPage("payment_methods", currentUser.rol) && <PaymentMethodsManagement />}
+                {currentPage === "logs" && canAccessPage("logs", currentUser.rol) && <Logs />}
+                {currentPage === "bulk_edit" && canAccessPage("bulk_edit", currentUser.rol) && <EdicionMultiple />}
+                {currentPage === "business_hours" && canAccessPage("business_hours", currentUser.rol) && <BusinessHoursSettings />}
 
-              {/* Fallback si intenta entrar a algo prohibido */}
-              {!canAccessPage(currentPage, currentUser.rol) && <div className="flex flex-col items-center justify-center h-[60vh] text-neutral-500">
-                <span className="text-2xl font-bold">Acceso Denegado</span>
-                <p>No tienes permisos para ver esta sección.</p>
-              </div>}
+                {/* Fallback si intenta entrar a algo prohibido */}
+                {!canAccessPage(currentPage, currentUser.rol) && <div className="flex flex-col items-center justify-center h-[60vh] text-neutral-500">
+                  <span className="text-2xl font-bold">Acceso Denegado</span>
+                  <p>No tienes permisos para ver esta sección.</p>
+                </div>}
+              </Suspense>
             </div>
           </main>
         </>

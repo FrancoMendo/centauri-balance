@@ -214,7 +214,7 @@ export function SalesPanel() {
   );
 
   // Acción de cobrar: registra las ventas en la BD y descuenta stock
-  const handleCheckout = async () => {
+  const handleCheckout = useCallback(async () => {
     if (cart.length === 0 || isProcessing) return;
     setIsProcessing(true);
 
@@ -297,9 +297,9 @@ export function SalesPanel() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [cart, isProcessing, paymentMethod, paymentMethodsList, clearCart, getTotal]);
 
-  // Atajo global: Enter para cobrar cuando foco no está en el buscador
+  // Atajo global: F12 para cobrar cuando foco no está en el buscador
   useEffect(() => {
     const handleGlobalEnter = (e: KeyboardEvent) => {
       if (
@@ -313,7 +313,7 @@ export function SalesPanel() {
     };
     window.addEventListener("keydown", handleGlobalEnter);
     return () => window.removeEventListener("keydown", handleGlobalEnter);
-  });
+  }, [cart.length, isProcessing, handleCheckout]);
 
   const handleAddGenericClick = () => {
     setIsGenericModalOpen(true);

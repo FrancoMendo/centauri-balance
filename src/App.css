@@ -80,7 +80,7 @@
   background-color: var(--color-surface-50);
 
   font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizeSpeed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
