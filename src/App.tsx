@@ -3,6 +3,7 @@ import "./App.css";
 import { Toaster } from 'sonner';
 import { Sidebar } from "./components/layout/Sidebar";
 import { PageView, canAccessPage } from "./lib/navigation";
+import { cn } from "./lib/utils";
 
 const SalesPanel = lazy(() => import("./pages/SalesPanel").then(m => ({ default: m.SalesPanel })));
 const SalesHistory = lazy(() => import("./pages/SalesHistory").then(m => ({ default: m.SalesHistory })));
@@ -23,6 +24,17 @@ function App() {
   const { currentUser } = useUserStore();
   const { status, expirationDate } = useLicense();
   const [isGraceBypassed, setIsGraceBypassed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(
+    () => localStorage.getItem("sidebar_collapsed") === "true"
+  );
+
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar_collapsed", String(next));
+      return next;
+    });
+  }, []);
 
   // Atajos de teclado globales para navegación entre páginas
 
@@ -73,11 +85,20 @@ function App() {
       ) : (
         <>
           <Toaster position="top-right" richColors closeButton />
-          <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-
+          <Sidebar
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={toggleSidebarCollapsed}
+          />
 
           {/* Contenido principal - con margin left para la sidebar fija */}
-          <main className="flex-1 ml-64 p-8 min-w-0 flex justify-center overflow-y-auto">
+          <main
+            className={cn(
+              "flex-1 p-8 min-w-0 flex justify-center overflow-y-auto transition-[margin] duration-300 ease-in-out",
+              sidebarCollapsed ? "ml-20" : "ml-64"
+            )}
+          >
             <div className="w-[90%] 2xl:w-[85%] max-w-[1600px]">
               <Suspense fallback={<div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>}>
                 {currentPage === "sales" && <SalesPanel />}

@@ -1,6 +1,6 @@
 [package]
 name = "centauri-balance"
-version = "1.0.0"
+version = "1.0.4"
 description = "A Tauri App"
 authors = ["FrancoMendoza"]
 edition = "2024"

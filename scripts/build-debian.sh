@@ -7,6 +7,9 @@
 # Uso (desde la raíz del proyecto):
 #   ./scripts/build-debian.sh            # Build completo
 #   ./scripts/build-debian.sh --clean    # Elimina imágenes Docker previas antes de compilar
+#
+# Cada ejecución incrementa automáticamente la versión de patch (X.Y.Z -> X.Y.Z+1)
+# en package.json, package-lock.json, src-tauri/tauri.conf.json y src-tauri/Cargo.toml.
 
 set -euo pipefail
 
@@ -57,6 +60,21 @@ if ! docker info &>/dev/null; then
 fi
 
 ok "Docker disponible."
+
+# ─── Incrementar versión (patch) ────────────────────────────────────────────
+# package.json es la fuente de verdad; se replica a mano en las otras dos
+# fuentes de versión del proyecto (ver CLAUDE.md: doble registro de versión
+# entre package.json/tauri.conf.json y src-tauri/Cargo.toml). El propio
+# Cargo.lock se resincroniza solo cuando cargo compila dentro del contenedor.
+log "Incrementando versión de patch..."
+
+OLD_VERSION=$(node -p "require('$PROJECT_DIR/package.json').version")
+NEW_VERSION=$(cd "$PROJECT_DIR" && npm version patch --no-git-tag-version | tr -d 'v')
+
+sed -i "0,/^version = /{s/^version = \".*\"/version = \"$NEW_VERSION\"/}" "$PROJECT_DIR/src-tauri/Cargo.toml"
+sed -i "s/\"version\": \"$OLD_VERSION\"/\"version\": \"$NEW_VERSION\"/" "$PROJECT_DIR/src-tauri/tauri.conf.json"
+
+ok "Versión: $OLD_VERSION → $NEW_VERSION"
 
 # ─── Limpieza opcional ──────────────────────────────────────────────────────
 if $CLEAN; then

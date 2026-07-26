@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ShoppingCart, Barcode, Banknote, Trash2, Plus, Minus, X } from "lucide-react";
+import { Barcode, Plus, X } from "lucide-react";
 import { useSalesStore } from "../store/useSalesStore";
 import { useInventoryStore } from "../store/useInventoryStore";
-import { PriceInput } from "../components/PriceInput";
+import { usePerformanceModeStore } from "../store/usePerformanceModeStore";
+import { useProductCacheStore } from "../store/useProductCacheStore";
 import { PriceDisplay } from "../components/ui/PriceDisplay";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { toast } from "sonner";
 import { GenericProductModal } from "../features/sales/GenericProductModal";
+import { CartTable } from "../features/sales/CartTable";
+import { OrderSummaryPanel } from "../features/sales/OrderSummaryPanel";
 import { getDb } from "../lib/db";
 import { productos as productosTable } from "../lib/schema";
 import { eq, sql } from "drizzle-orm";
@@ -21,9 +24,28 @@ const GENERIC_BARCODE = "NO_CODE_GENERIC";
 /** Delay en ms para debounce de búsqueda por texto */
 const SEARCH_DEBOUNCE_MS = 250;
 
+/**
+ * Umbral máximo (ms) entre teclas consecutivas para considerarlas parte de un
+ * mismo escaneo de pistola. En WebKitGTK (Debian/Linux) el despacho de eventos
+ * de teclado tiene más latencia/jitter que en WebView2 (Windows), por lo que un
+ * umbral bajo (ej. 50ms) hace que caracteres del lector se traten como tecleo
+ * humano y se filtren al input en vez de bloquearse.
+ */
+const BARCODE_SCAN_KEY_GAP_MS = 120;
+
+/**
+ * Tolerancia (ms) para el Enter/CR final que manda el lector como terminador.
+ * Suele llegar con más latencia que los dígitos entre sí (procesamiento extra
+ * de la tecla especial), así que usa un margen más generoso que
+ * BARCODE_SCAN_KEY_GAP_MS para no perder el buffer justo al terminar el escaneo.
+ */
+const BARCODE_SCAN_ENTER_GAP_MS = 500;
+
 export function SalesPanel() {
   const { cart, addToCart, removeFromCart, updateQuantity, updatePrice, clearCart, getTotal, getItemCount, searchQuery, setSearchQuery } = useSalesStore();
   const { searchProductsSQL, findByBarcode } = useInventoryStore();
+  const performanceMode = usePerformanceModeStore((state) => state.enabled);
+  const { loadCache, searchCache, findByBarcodeCache } = useProductCacheStore();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchResults, setSearchResults] = useState<Producto[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -41,6 +63,24 @@ export function SalesPanel() {
   const lastKeyTimeRef = useRef(0);
   const lastScannedCodeRef = useRef("");
   const lastScannedTimeRef = useRef(0);
+  // Respaldo cuando el lector no manda terminador Enter/CR: si tras una
+  // ráfaga de caracteres no llega nada más en este lapso, se procesa el
+  // buffer igual.
+  const scanFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Refuerzo del autoFocus: en el webview de Debian el foco inicial vía
+  // atributo autoFocus a veces no se aplica a tiempo (carga vía lazy/Suspense).
+  useEffect(() => {
+    searchInputRef.current?.focus();
+  }, []);
+
+  // Modo Rendimiento: carga (o recarga) el caché en memoria de productos al
+  // entrar al panel, para no golpear SQLite en cada tecla del buscador.
+  useEffect(() => {
+    if (performanceMode) {
+      loadCache();
+    }
+  }, [performanceMode, loadCache]);
 
   // Inicializar métodos de pago
   useEffect(() => {
@@ -104,7 +144,27 @@ export function SalesPanel() {
     }
 
     searchTimerRef.current = setTimeout(async () => {
-      const results = await searchProductsSQL(searchQuery.trim(), 20);
+      const trimmed = searchQuery.trim();
+
+      // Coincidencia exacta de código de barras primero: cubre lectores que
+      // no envían Enter como sufijo, agregando el producto sin intervención
+      // manual apenas se termina de tipear/escanear el código.
+      // Modo Rendimiento: todo se resuelve contra el caché en memoria (sin
+      // tocar SQLite), evitando el roundtrip IPC en cada tecla.
+      const exactMatch = performanceMode
+        ? findByBarcodeCache(trimmed)
+        : await findByBarcode(trimmed);
+      if (exactMatch) {
+        addToCart(exactMatch);
+        setSearchQuery("");
+        setShowResults(false);
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      const results = performanceMode
+        ? searchCache(trimmed, 20)
+        : await searchProductsSQL(trimmed, 20);
       setSearchResults(results);
       setShowResults(results.length > 0);
       setSelectedResultIndex(0);
@@ -113,7 +173,7 @@ export function SalesPanel() {
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
-  }, [searchQuery, searchProductsSQL]);
+  }, [searchQuery, searchProductsSQL, findByBarcode, addToCart, performanceMode, searchCache, findByBarcodeCache]);
 
   // Atajos globales: Alt+B para buscador, Alt+N para ítem manual
   useEffect(() => {
@@ -132,60 +192,143 @@ export function SalesPanel() {
 
   // Detector Global de Pistola de Código de Barras — BUSCA DIRECTO EN SQLITE
   useEffect(() => {
+    // Campos donde el usuario puede estar editando texto a mano (cantidad,
+    // precio, buscador). Ahí no forzamos el foco de vuelta al buscador.
+    const isTextEntryElement = (el: Element | null): boolean => {
+      if (!el) return false;
+      return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || (el as HTMLElement).isContentEditable;
+    };
+
+    // Procesa un código ya armado en el buffer, sin importar si llegó por el
+    // terminador Enter/CR o por el respaldo de silencio (ver más abajo).
+    const processScannedCode = (code: string) => {
+      if (code.length < 3) return;
+      const dateNow = Date.now();
+      if (lastScannedCodeRef.current === code && (dateNow - lastScannedTimeRef.current < 800)) {
+        return;
+      }
+      lastScannedCodeRef.current = code;
+      lastScannedTimeRef.current = dateNow;
+
+      // Búsqueda por código de barras: en Modo Rendimiento contra el caché
+      // en memoria, si no directo en SQLite.
+      const lookup = performanceMode
+        ? Promise.resolve(findByBarcodeCache(code))
+        : findByBarcode(code);
+
+      lookup.then((product) => {
+        if (product) {
+          addToCart(product);
+          setSearchQuery("");
+          setShowResults(false);
+          searchInputRef.current?.focus();
+        } else {
+          toast.error(`Producto no encontrado: ${code}`);
+        }
+      });
+    };
+
+    const armFallbackTimer = () => {
+      if (scanFallbackTimerRef.current) clearTimeout(scanFallbackTimerRef.current);
+      // Respaldo para lectores que no mandan terminador Enter/CR (o lo mandan
+      // como algo que el navegador no reconoce como "Enter"): si tras una
+      // ráfaga de caracteres no llega nada más en este lapso, se procesa el
+      // buffer igual, sin esperar al terminador.
+      scanFallbackTimerRef.current = setTimeout(() => {
+        const code = bufferRef.current;
+        bufferRef.current = "";
+        processScannedCode(code);
+      }, BARCODE_SCAN_ENTER_GAP_MS);
+    };
+
     const handleGlobalBarcode = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
+      // Repetición por mantener una tecla apretada (Backspace, una letra,
+      // etc.): el SO la genera con gaps tan chicos como los de la pistola,
+      // pero nunca viene de un escaneo real. Se deja pasar sin tocarla.
+      if (e.repeat) return;
 
       const timeNow = performance.now();
-      if (timeNow - lastKeyTimeRef.current > 50) {
+      const gap = timeNow - lastKeyTimeRef.current;
+
+      // El Enter/CR terminador del lector se procesa ANTES de cualquier
+      // lógica de reseteo por timing: si se tratara igual que un carácter
+      // más, un gap grande respecto al último dígito (común en el
+      // terminador, que suele tener más latencia que los dígitos entre sí)
+      // borraría el buffer justo antes de leerlo, perdiendo el código ya
+      // escaneado en silencio (sin toast de error ni producto agregado).
+      // Se usa una tolerancia más generosa (BARCODE_SCAN_ENTER_GAP_MS) que
+      // la de los dígitos entre sí para aceptar esa latencia extra, pero
+      // sigue exigiendo que el Enter llegue poco después del último
+      // carácter, para no confundirlo con un Enter manual y tardío del
+      // usuario sobre contenido residual del buffer.
+      if (e.key === "Enter") {
+        if (scanFallbackTimerRef.current) {
+          clearTimeout(scanFallbackTimerRef.current);
+          scanFallbackTimerRef.current = null;
+        }
+        const code = gap <= BARCODE_SCAN_ENTER_GAP_MS ? bufferRef.current : "";
         bufferRef.current = "";
-      } else {
-        if (document.activeElement === searchInputRef.current) {
+        lastKeyTimeRef.current = timeNow;
+
+        if (code.length >= 3) {
           e.preventDefault();
           e.stopPropagation();
+          processScannedCode(code);
         }
+        return;
+      }
+
+      // Solo las teclas de un carácter (imprimibles) son candidatas a formar
+      // parte de un código escaneado. Teclas de control como Backspace,
+      // Delete o las flechas nunca las manda una pistola y jamás deben
+      // bloquearse por esta lógica, sin importar la velocidad a la que
+      // lleguen (ej. al mantenerlas apretadas o borrar rápido a mano).
+      const isCandidateChar = e.key.length === 1;
+      const isRapidSuccession = gap <= BARCODE_SCAN_KEY_GAP_MS;
+
+      if (!isCandidateChar) {
+        return;
+      }
+
+      if (!isRapidSuccession) {
+        bufferRef.current = "";
+        // Si arranca un posible escaneo (carácter imprimible) y el foco quedó
+        // en un control no editable (ej. el <select> de Método de Pago o
+        // ningún elemento), lo recuperamos para el buscador: en WebKitGTK
+        // (Debian) un <select> nativo puede consumir las teclas del lector
+        // antes de que lleguen al DOM, y el escaneo nunca se completa ni
+        // agrega el producto.
+        if (!isTextEntryElement(document.activeElement)) {
+          searchInputRef.current?.focus();
+        }
+      } else {
+        // Una ráfaga de caracteres a menos de BARCODE_SCAN_KEY_GAP_MS es
+        // imposible de producir a mano: siempre es la pistola, sin importar
+        // qué elemento tenga el foco. La bloqueamos para que no se filtre a
+        // otro campo (cantidad, precio, etc).
+        e.preventDefault();
+        e.stopPropagation();
       }
       lastKeyTimeRef.current = timeNow;
 
-      if (e.key === "Enter") {
-        const code = bufferRef.current;
-        bufferRef.current = "";
-        
-        if (code.length >= 3) {
-          const dateNow = Date.now();
-          if (lastScannedCodeRef.current === code && (dateNow - lastScannedTimeRef.current < 800)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-          }
-          
-          lastScannedCodeRef.current = code;
-          lastScannedTimeRef.current = dateNow;
-
-          // Búsqueda directa en SQLite por código de barras (no en array en memoria)
-          e.preventDefault();
-          e.stopPropagation();
-          
-          findByBarcode(code).then((product) => {
-            if (product) {
-              addToCart(product);
-              if (document.activeElement === searchInputRef.current) {
-                setSearchQuery("");
-                setShowResults(false);
-                searchInputRef.current?.blur();
-              }
-            } else {
-              toast.error(`Producto no encontrado: ${code}`);
-            }
-          });
-        }
-      } else if (e.key.length === 1) {
-        bufferRef.current += e.key;
+      bufferRef.current += e.key;
+      // Arma (o reinicia) el respaldo solo durante una ráfaga real: evita
+      // que tecleo humano normal dispare una búsqueda automática no pedida.
+      if (isRapidSuccession) {
+        armFallbackTimer();
+      } else if (scanFallbackTimerRef.current) {
+        clearTimeout(scanFallbackTimerRef.current);
+        scanFallbackTimerRef.current = null;
       }
     };
 
     window.addEventListener("keydown", handleGlobalBarcode, { capture: true });
-    return () => window.removeEventListener("keydown", handleGlobalBarcode, { capture: true });
-  }, [addToCart, setSearchQuery, findByBarcode]);
+    return () => {
+      window.removeEventListener("keydown", handleGlobalBarcode, { capture: true });
+      if (scanFallbackTimerRef.current) clearTimeout(scanFallbackTimerRef.current);
+    };
+  }, [addToCart, setSearchQuery, findByBarcode, performanceMode, findByBarcodeCache]);
 
   const handleSearchKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -203,7 +346,7 @@ export function SalesPanel() {
           addToCart(searchResults[selectedResultIndex]);
           setSearchQuery("");
           setShowResults(false);
-          searchInputRef.current?.blur();
+          searchInputRef.current?.focus();
         }
       } else if (e.key === "Escape") {
         setShowResults(false);
@@ -290,6 +433,12 @@ export function SalesPanel() {
       clearCart();
       await logAction(`Venta registrada exitosamente por $${total.toFixed(2)} (${cart.length} ítems, Medio: ${paymentMethod})`);
       toast.success("Venta registrada con éxito.");
+
+      // El stock cambió: si el caché en memoria está activo, se refresca
+      // para que el buscador no muestre stock desactualizado.
+      if (performanceMode) {
+        loadCache();
+      }
     } catch (error) {
       console.error("Error al procesar la venta:", error);
       await logAction(`Error intentando registrar venta: ${(error as Error).message}`);
@@ -297,7 +446,7 @@ export function SalesPanel() {
     } finally {
       setIsProcessing(false);
     }
-  }, [cart, isProcessing, paymentMethod, paymentMethodsList, clearCart, getTotal]);
+  }, [cart, isProcessing, paymentMethod, paymentMethodsList, clearCart, getTotal, performanceMode, loadCache]);
 
   // Atajo global: F12 para cobrar cuando foco no está en el buscador
   useEffect(() => {
@@ -444,198 +593,27 @@ export function SalesPanel() {
 
           {/* Tabla del carrito */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden min-h-[460px] flex flex-col">
-            {cart.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center text-gray-400 flex flex-col items-center">
-                  <ShoppingCart className="w-16 h-16 mb-4 text-gray-200" />
-                  <p className="font-medium text-lg">El carrito está vacío</p>
-                  <p className="text-sm mt-1">
-                    Busque un producto arriba o escanee un código de barras
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500">
-                      <th className="py-3 px-4">Producto</th>
-                      <th className="py-3 px-4 text-center">Cantidad</th>
-                      <th className="py-3 px-4 text-right">Precio Unit.</th>
-                      <th className="py-3 px-4 text-right">Subtotal</th>
-                      <th className="py-3 px-4 text-right w-12"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {cart.map((item) => (
-                      <tr
-                        key={item.product.id_producto}
-                        className="hover:bg-gray-50/50 transition-colors"
-                      >
-                        <td className="py-3 px-4">
-                          <span className="font-medium text-gray-800">
-                            {item.product.nombre}
-                          </span>
-                          {item.product.codigo_barras && (
-                            <span className="block text-xs text-gray-400 font-mono mt-0.5">
-                              {item.product.codigo_barras}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() =>
-                                updateQuantity(
-                                  item.product.id_producto,
-                                  item.quantity - 1
-                                )
-                              }
-                              className="p-1 rounded hover:bg-gray-200 transition-colors text-gray-500"
-                            >
-                              <Minus className="w-4 h-4" />
-                            </button>
-                            <input
-                              type="number"
-                              min="1"
-                              className="w-16 text-center font-mono font-semibold text-gray-800 border border-gray-200 rounded-md py-1 outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={item.quantity || ''}
-                              onChange={(e) =>
-                                updateQuantity(
-                                  item.product.id_producto,
-                                  parseInt(e.target.value, 10) || 0
-                                )
-                              }
-                              onBlur={(e) => {
-                                if (!e.target.value || parseInt(e.target.value, 10) < 1) {
-                                  updateQuantity(item.product.id_producto, 1);
-                                }
-                              }}
-                            />
-                            <button
-                              onClick={() =>
-                                updateQuantity(
-                                  item.product.id_producto,
-                                  item.quantity + 1
-                                )
-                              }
-                              className="p-1 rounded hover:bg-gray-200 transition-colors text-gray-500"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="w-24 ml-auto">
-                            <PriceInput
-                              value={item.product.precio_venta}
-                              onChange={(val) => updatePrice(item.product.id_producto, val)}
-                              className={`text-right py-1 px-2 text-sm font-semibold text-gray-700 hover:bg-white w-full transition-colors ${item.product.precio_venta === 0 ? 'bg-amber-100 border-amber-400 ring-2 ring-amber-400/50 text-amber-900 shadow-sm' : 'bg-gray-50 border-gray-200'}`}
-                              placeholder={item.product.precio_venta === 0 ? 'Monto requerido' : undefined}
-                            />
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono font-semibold text-gray-900">
-                          <PriceDisplay amount={item.subtotal} />
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() =>
-                              removeFromCart(item.product.id_producto)
-                            }
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
-                            title="Quitar del carrito"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <CartTable
+              cart={cart}
+              onUpdateQuantity={updateQuantity}
+              onUpdatePrice={updatePrice}
+              onRemove={removeFromCart}
+            />
           </div>
         </div>
 
         {/* Panel derecho: Resumen y Total */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
-          <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-emerald-600" /> Resumen de
-            Venta
-          </h3>
-
-          <div className="flex-1 space-y-3">
-            <div className="flex justify-between text-sm text-gray-600 border-b border-gray-50 pb-2">
-              <span>Artículos en carrito</span>
-              <span className="font-medium text-gray-900">
-                {itemCount} un.
-              </span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-600 border-b border-gray-50 pb-2">
-              <span>Líneas de productos</span>
-              <span className="font-medium text-gray-900">{cart.length}</span>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-100 pt-4 mt-6">
-            <div className="flex justify-between items-end mb-6">
-              <span className="text-gray-500 font-medium tracking-wide uppercase text-sm">
-                Total a cobrar
-              </span>
-              <PriceDisplay
-                amount={total}
-                className="text-4xl font-bold text-gray-900"
-              />
-            </div>
-
-            <div className="mb-6 space-y-2">
-              <label className="text-sm font-medium text-gray-700">Método de Pago</label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-lg p-3 text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500/50 transition-shadow transition-colors"
-                disabled={isProcessing}
-              >
-                {paymentMethodsList.map(pm => (
-                  <option key={pm.nombre} value={pm.nombre}>
-                    {pm.nombre} {pm.comision > 0 ? `(-${pm.comision}%)` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {(() => {
-              const selectedPM = paymentMethodsList.find(m => m.nombre === paymentMethod);
-              const commission = selectedPM?.comision || 0;
-              const lossAmount = total * (commission / 100);
-              if (commission > 0) {
-                return (
-                  <div className="mb-6 bg-red-50 border border-red-100 rounded-lg p-3 flex justify-between items-center text-sm">
-                    <span className="text-red-700 font-medium">Comisión retención ({commission}%)</span>
-                    <PriceDisplay
-                      amount={-lossAmount}
-                      className="text-red-600 font-bold"
-                      prefix=""
-                    />
-                  </div>
-                );
-              }
-              return null;
-            })()}
-
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={handleCheckout}
-              disabled={cart.length === 0 || isProcessing}
-              className="w-full py-4 text-lg flex items-center justify-center gap-2"
-            >
-              <Banknote className="w-6 h-6" />
-              {isProcessing ? "Procesando..." : "Cobrar (F12)"}
-            </Button>
-          </div>
-        </div>
+        <OrderSummaryPanel
+          total={total}
+          itemCount={itemCount}
+          lineCount={cart.length}
+          paymentMethod={paymentMethod}
+          onPaymentMethodChange={setPaymentMethod}
+          paymentMethodsList={paymentMethodsList}
+          isProcessing={isProcessing}
+          canCheckout={cart.length > 0}
+          onCheckout={handleCheckout}
+        />
       </div>
       
       {/* Modal para Items Manuales / Sin Código */}
