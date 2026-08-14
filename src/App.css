@@ -110,3 +110,46 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-sky-700);
 }
+
+/* Modo rendimiento (usePerformanceModeStore): en equipos con GPU integrada
+   muy vieja (ej. Intel GMA950/i915, sin soporte de shaders GLSL/GL2+), el
+   compositor acelerado de WebKitGTK no puede componer blur/sombras/bordes
+   redondeados en la GPU y termina rasterizándolos por CPU en cada
+   tecla/scroll. Estas reglas los desactivan globalmente mientras el toggle
+   esté activo — <html> recibe la clase "perf-mode" desde el store. */
+html.perf-mode ::-webkit-scrollbar-thumb {
+  /* El thumb se repinta en cada evento de scroll; el radio es lo más caro
+     de recomputar por software en esa reposición constante. */
+  border-radius: 0;
+}
+
+html.perf-mode .shadow-xs,
+html.perf-mode .shadow-sm,
+html.perf-mode .shadow-md,
+html.perf-mode .shadow-lg,
+html.perf-mode .shadow-xl,
+html.perf-mode .shadow-2xl {
+  box-shadow: none !important;
+}
+
+html.perf-mode .backdrop-blur-xs,
+html.perf-mode .backdrop-blur-sm,
+html.perf-mode .backdrop-blur-md,
+html.perf-mode .backdrop-blur-lg {
+  backdrop-filter: none !important;
+}
+
+html.perf-mode .transition-all,
+html.perf-mode .transition-colors,
+html.perf-mode .transition-shadow,
+html.perf-mode .transition-transform,
+html.perf-mode .transition-opacity {
+  transition: none !important;
+}
+
+html.perf-mode .rounded-full,
+html.perf-mode .rounded-3xl,
+html.perf-mode .rounded-2xl,
+html.perf-mode .rounded-xl {
+  border-radius: 4px !important;
+}
