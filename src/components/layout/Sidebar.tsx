@@ -14,7 +14,8 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  Zap
+  Zap,
+  PackageX
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
@@ -93,6 +94,12 @@ export function Sidebar({ currentPage, setCurrentPage, collapsed, onToggleCollap
       label: "Horario del Negocio",
       icon: <Clock className="w-5 h-5" />,
       shortcut: "Alt+9",
+    },
+    {
+      id: "voided_carts",
+      label: "Carritos Cancelados",
+      icon: <PackageX className="w-5 h-5" />,
+      shortcut: "Alt+0",
     },
   ];
 

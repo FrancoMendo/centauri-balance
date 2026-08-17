@@ -11,12 +11,14 @@ import { toast } from "sonner";
 import { GenericProductModal } from "../features/sales/GenericProductModal";
 import { CartTable } from "../features/sales/CartTable";
 import { OrderSummaryPanel } from "../features/sales/OrderSummaryPanel";
+import { ConfirmationModal } from "../components/ui/ConfirmationModal";
 import { getDb } from "../lib/db";
 import { productos as productosTable } from "../lib/schema";
 import { eq, sql } from "drizzle-orm";
-import { ventas, metodos_pago as pmTable } from "../lib/schema";
+import { ventas, metodos_pago as pmTable, carritos_vaciados } from "../lib/schema";
 import { logAction } from "../lib/logger";
 import { localTimestamp } from "../lib/localTimestamp";
+import { useUserStore } from "../store/userStore";
 import type { Producto } from "../lib/schema";
 
 const GENERIC_BARCODE = "NO_CODE_GENERIC";
@@ -46,6 +48,7 @@ export function SalesPanel() {
   const { searchProductsSQL, findByBarcode } = useInventoryStore();
   const performanceMode = usePerformanceModeStore((state) => state.enabled);
   const { loadCache, searchCache, findByBarcodeCache } = useProductCacheStore();
+  const { currentUser } = useUserStore();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchResults, setSearchResults] = useState<Producto[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -54,6 +57,7 @@ export function SalesPanel() {
   const [paymentMethod, setPaymentMethod] = useState("Efectivo");
   const [paymentMethodsList, setPaymentMethodsList] = useState<{ nombre: string; comision: number }[]>([]);
   const [isGenericModalOpen, setIsGenericModalOpen] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
 
   // Ref para debounce timer
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -448,6 +452,39 @@ export function SalesPanel() {
     }
   }, [cart, isProcessing, paymentMethod, paymentMethodsList, clearCart, getTotal, performanceMode, loadCache]);
 
+  // Confirmación de vaciado: registra un snapshot del carrito (para que un
+  // admin pueda revisar después si fue una cancelación legítima o si faltan
+  // productos) y recién entonces lo vacía. Si el registro de auditoría
+  // falla, no se bloquea al cajero: se avisa por toast pero el carrito se
+  // vacía igual.
+  const confirmClearCart = useCallback(async () => {
+    try {
+      const db = await getDb();
+      const itemsSnapshot = cart.map((item) => ({
+        id_producto: item.product.id_producto,
+        nombre: item.product.nombre,
+        cantidad: item.quantity,
+        precio_venta: item.product.precio_venta,
+        subtotal: item.subtotal,
+      }));
+      const userId = currentUser?.id_usuario ?? 1;
+
+      await db.insert(carritos_vaciados).values({
+        items_json: JSON.stringify(itemsSnapshot),
+        cantidad_items: getItemCount(),
+        total: getTotal(),
+        id_usuario: userId,
+        fecha: localTimestamp(),
+      });
+      await logAction(`Carrito vaciado (${cart.length} ítems, $${getTotal().toFixed(2)})`, userId);
+    } catch (error) {
+      console.error("Error al registrar carrito vaciado para auditoría:", error);
+      toast.error("No se pudo registrar el vaciado para auditoría");
+    } finally {
+      clearCart();
+    }
+  }, [cart, currentUser, clearCart, getItemCount, getTotal]);
+
   // Atajo global: F12 para cobrar cuando foco no está en el buscador
   useEffect(() => {
     const handleGlobalEnter = (e: KeyboardEvent) => {
@@ -512,7 +549,7 @@ export function SalesPanel() {
           {cart.length > 0 && (
             <Button
               variant="danger"
-              onClick={clearCart}
+              onClick={() => setIsClearConfirmOpen(true)}
               className="flex items-center gap-2"
             >
               <X className="w-4 h-4" />
@@ -617,10 +654,21 @@ export function SalesPanel() {
       </div>
       
       {/* Modal para Items Manuales / Sin Código */}
-      <GenericProductModal 
+      <GenericProductModal
         isOpen={isGenericModalOpen}
         onClose={() => setIsGenericModalOpen(false)}
         onAdd={handleConfirmGenericProduct}
+      />
+
+      {/* Confirmación de vaciado de carrito (queda registrado para auditoría) */}
+      <ConfirmationModal
+        isOpen={isClearConfirmOpen}
+        onClose={() => setIsClearConfirmOpen(false)}
+        onConfirm={confirmClearCart}
+        title="Vaciar carrito"
+        description="Se registrará el contenido actual para auditoría antes de vaciarlo."
+        variant="warning"
+        confirmLabel="Vaciar"
       />
     </div>
   );

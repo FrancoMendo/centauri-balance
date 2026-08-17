@@ -1,4 +1,4 @@
-export type PageView = "sales" | "sales_history" | "inventory" | "cash_register" | "expense_management" | "payment_methods" | "logs" | "bulk_edit" | "business_hours";
+export type PageView = "sales" | "sales_history" | "inventory" | "cash_register" | "expense_management" | "payment_methods" | "logs" | "bulk_edit" | "business_hours" | "voided_carts";
 
 export const OPERADOR_PAGES: PageView[] = ["sales", "sales_history", "inventory", "bulk_edit"];
 

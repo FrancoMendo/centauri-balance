@@ -18,9 +18,14 @@ class DatabaseClient {
           const isDev = import.meta.env.DEV;
 
           if (isDev) {
-            // Durante el desarrollo local, usamos una ruta absoluta hacia el proyecto 
-            // para que puedas abrir el archivo .db con cualquier visor de SQLite (ej. DBeaver o extensiones de VSCode)
-            tauriDb = await Database.load("sqlite:C:/Users/Franco/Documents/Proyectos-SSD/centauri-balance/src-tauri/centauri-dev.db");
+            // Durante el desarrollo local, usamos una ruta absoluta hacia el proyecto
+            // para que puedas abrir el archivo .db con cualquier visor de SQLite (ej. DBeaver o extensiones de VSCode).
+            // La ruta cambia según el SO de la máquina de desarrollo (Windows vs Linux).
+            const isWindows = navigator.userAgent.toLowerCase().includes("windows");
+            const devDbPath = isWindows
+              ? "sqlite:C:/Users/Franco/Documents/Proyectos-SSD/centauri-balance/src-tauri/centauri-dev.db"
+              : "sqlite:/home/franco/Proyectos/centauri-balance/src-tauri/centauri-dev.db";
+            tauriDb = await Database.load(devDbPath);
             console.log("🛠️ Dev Mode: Base de datos cargada localmente en la carpeta del proyecto");
           } else {
             // En producción, se guarda en el directorio AppData del sistema operativo

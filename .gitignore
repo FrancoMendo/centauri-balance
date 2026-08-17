@@ -24,4 +24,8 @@ dist-ssr
 *.sw?
 
 centauri.db
+src-tauri/centauri-dev.db
+src-tauri/*.db-journal
+src-tauri/*.db-wal
+src-tauri/*.db-shm
 dist-debian/

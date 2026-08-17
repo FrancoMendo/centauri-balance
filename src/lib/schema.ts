@@ -94,6 +94,21 @@ export const grupos_productos = sqliteTable("grupos_productos", {
 export type GrupoProducto = typeof grupos_productos.$inferSelect;
 export type NewGrupoProducto = typeof grupos_productos.$inferInsert;
 
+export const carritos_vaciados = sqliteTable("carritos_vaciados", {
+  id_carrito_vaciado: integer("id_carrito_vaciado").primaryKey({ autoIncrement: true }),
+  items_json: text("items_json").notNull(), // JSON stringified: [{id_producto, nombre, cantidad, precio_venta, subtotal}]
+  cantidad_items: integer("cantidad_items").notNull(),
+  total: real("total").notNull(),
+  id_usuario: integer("id_usuario").notNull().references(() => usuarios.id_usuario), // quien vació el carrito
+  fecha: text("fecha").default(sql`(datetime('now','localtime'))`),
+  estado_revision: text("estado_revision").notNull().default("pendiente"), // 'pendiente' | 'legitimo' | 'falta_producto'
+  id_usuario_revisor: integer("id_usuario_revisor").references(() => usuarios.id_usuario),
+  fecha_revision: text("fecha_revision"),
+});
+
+export type CarritoVaciado = typeof carritos_vaciados.$inferSelect;
+export type NewCarritoVaciado = typeof carritos_vaciados.$inferInsert;
+
 export const parametros = sqliteTable("parametros", {
   id_parametro: integer("id_parametro").primaryKey({ autoIncrement: true }),
   key: text("key").notNull().unique(),

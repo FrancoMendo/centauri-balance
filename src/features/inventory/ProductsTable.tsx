@@ -52,7 +52,6 @@ export const ProductsTable = memo(function ProductsTable({
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="py-3 px-4 text-sm font-semibold text-gray-600">ID</th>
               <th className="py-3 px-4 text-sm font-semibold text-gray-600">Nombre</th>
-              <th className="py-3 px-4 text-sm font-semibold text-gray-600">Categoría</th>
               <th className="py-3 px-4 text-sm font-semibold text-gray-600">Precio Lista</th>
               <th className="py-3 px-4 text-sm font-semibold text-gray-600">Precio Venta</th>
               <th className="py-3 px-4 text-sm font-semibold text-gray-600">Stock</th>
@@ -62,7 +61,7 @@ export const ProductsTable = memo(function ProductsTable({
           <tbody className="divide-y divide-gray-100">
             {products.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500">
+                <td colSpan={6} className="py-8 text-center text-gray-500">
                   {searchTerm ? "No se encontraron productos con esa búsqueda." : "No hay productos en el inventario."}
                 </td>
               </tr>
@@ -71,7 +70,6 @@ export const ProductsTable = memo(function ProductsTable({
                 <tr key={p.id_producto} className="hover:bg-gray-50/50 transition-colors">
                   <td className="py-3 px-4 text-gray-800">{p.id_producto}</td>
                   <td className="py-3 px-4 text-gray-800 font-medium">{p.nombre}</td>
-                  <td className="py-3 px-4 text-gray-600">{p.categoria || "-"}</td>
                   <td className="py-3 px-4 text-gray-500">${p.precio_lista}</td>
                   <td className="py-3 px-4 text-primary-600 font-semibold">${p.precio_venta}</td>
                   <td className="py-3 px-4">

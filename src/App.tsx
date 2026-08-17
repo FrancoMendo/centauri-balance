@@ -14,6 +14,7 @@ const CashRegisterClose = lazy(() => import("./pages/CashRegisterClose").then(m 
 const EdicionMultiple = lazy(() => import("./pages/EdicionMultiple").then(m => ({ default: m.EdicionMultiple })));
 const BusinessHoursSettings = lazy(() => import("./pages/BusinessHoursSettings").then(m => ({ default: m.BusinessHoursSettings })));
 const Logs = lazy(() => import("./pages/Logs"));
+const VoidedCarts = lazy(() => import("./pages/VoidedCarts").then(m => ({ default: m.VoidedCarts })));
 import { useUserStore } from "./store/userStore";
 import Login from "./pages/Login";
 import { useLicense } from "./hooks/useLicense";
@@ -52,6 +53,7 @@ function App() {
       "7": "payment_methods",
       "8": "logs",
       "9": "business_hours",
+      "0": "voided_carts",
     };
 
     const targetPage = pageMap[e.key];
@@ -95,11 +97,11 @@ function App() {
           {/* Contenido principal - con margin left para la sidebar fija */}
           <main
             className={cn(
-              "flex-1 p-8 min-w-0 flex justify-center overflow-y-auto transition-[margin] duration-300 ease-in-out",
+              "flex-1 p-4 md:p-6 min-w-0 flex justify-center overflow-y-auto transition-[margin] duration-300 ease-in-out",
               sidebarCollapsed ? "ml-20" : "ml-64"
             )}
           >
-            <div className="w-[90%] 2xl:w-[85%] max-w-[1600px]">
+            <div className="w-full max-w-[2200px]">
               <Suspense fallback={<div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>}>
                 {currentPage === "sales" && <SalesPanel />}
                 {currentPage === "sales_history" && <SalesHistory />}
@@ -112,6 +114,7 @@ function App() {
                 {currentPage === "logs" && canAccessPage("logs", currentUser.rol) && <Logs />}
                 {currentPage === "bulk_edit" && canAccessPage("bulk_edit", currentUser.rol) && <EdicionMultiple />}
                 {currentPage === "business_hours" && canAccessPage("business_hours", currentUser.rol) && <BusinessHoursSettings />}
+                {currentPage === "voided_carts" && canAccessPage("voided_carts", currentUser.rol) && <VoidedCarts />}
 
                 {/* Fallback si intenta entrar a algo prohibido */}
                 {!canAccessPage(currentPage, currentUser.rol) && <div className="flex flex-col items-center justify-center h-[60vh] text-neutral-500">
